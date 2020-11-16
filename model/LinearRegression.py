@@ -8,7 +8,7 @@ class RegressionNet(nn.Module):
         #self.feature_dim = input_dim
     
     def forward(self, x, last=False):
-        scores = torch.sigmoid(self.linear(x))
+        scores = self.linear(x)
         return scores.view(-1)
         '''if last:
             return scores, x

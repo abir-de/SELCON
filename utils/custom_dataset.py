@@ -243,23 +243,26 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
         x_trn, y_trn = census_load(trn_file, dim=data_dims)
         x_tst, y_tst = census_load(tst_file, dim=data_dims)
         
-        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
+        '''x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
         sc = StandardScaler()
         x_trn = sc.fit_transform(x_trn)
         x_val = sc.transform(x_val)
-        x_tst = sc.transform(x_tst)
+        x_tst = sc.transform(x_tst)'''
+
+        x_trn = np.concatenate((x_trn, x_tst), axis=0)
+        y_trn = np.concatenate((y_trn, y_tst), axis=0)
 
         if isnumpy:
             fullset = (x_trn, y_trn)
-            valset = (x_val, y_val)
-            testset = (x_tst, y_tst)
+            #valset = (x_val, y_val)
+            #testset = (x_tst, y_tst)
 
         else:
             fullset = CustomDataset(x_trn, y_trn)
-            valset = CustomDataset(x_val, y_val)
-            testset = CustomDataset(x_tst, y_tst)
+            #valset = CustomDataset(x_val, y_val)
+            #testset = CustomDataset(x_tst, y_tst)
 
-        return fullset, valset, testset, data_dims
+        return fullset, data_dims #, valset, testset, 
 
     elif dset_name == "Community_Crime":
         trn_file = os.path.join(datadir, 'communities.data')
@@ -268,21 +271,21 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
 
         x_trn, y_trn = community_crime_load(trn_file, dim=data_dims)
         
-        x_trn, x_tst, y_trn, y_tst= train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
+        '''x_trn, x_tst, y_trn, y_tst= train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
         x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
         sc = StandardScaler()
         x_trn = sc.fit_transform(x_trn)
         x_val = sc.transform(x_val)
-        x_tst = sc.transform(x_tst)
+        x_tst = sc.transform(x_tst)'''
 
         if isnumpy:
             fullset = (x_trn, y_trn)
-            valset = (x_val, y_val)
-            testset = (x_tst, y_tst)
+            #valset = (x_val, y_val)
+            #testset = (x_tst, y_tst)
 
         else:
             fullset = CustomDataset(x_trn, y_trn)
-            valset = CustomDataset(x_val, y_val)
-            testset = CustomDataset(x_tst, y_tst)
+            #valset = CustomDataset(x_val, y_val)
+            #testset = CustomDataset(x_tst, y_tst)
 
-        return fullset, valset, testset, data_dims
+        return fullset, data_dims # valset, testset,

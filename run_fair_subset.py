@@ -1,14 +1,14 @@
 import subprocess
 
 datadir = '../Datasets/data/'
-#datasets = [ 'census']
-datasets = [ 'Community_Crime']
+datasets = [ 'census']
+#datasets = [ 'Community_Crime']
 #fracs =[0.1,0.2]#, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 #fracs =[ 0.5,0.6,0.7,0.8,0.9]
 fracs =[1]#[0.1,0.3,0.5]
-num_epochs = 200
+num_epochs = 1500
 select_every = [20]#,35,50]
-reg_lambda = [1]
+reg_lambda = [0.01]
 
 for dset in datasets:
     for sel in select_every:
