@@ -6,7 +6,7 @@ datasets = [ 'census']
 #fracs =[0.1,0.2]#, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 #fracs =[ 0.5,0.6,0.7,0.8,0.9]
 fracs =[1]#[0.1,0.3,0.5]
-num_epochs = 1500
+num_epochs = 2500
 select_every = [20]#,35,50]
 reg_lambda = [0.01]
 
@@ -15,7 +15,7 @@ for dset in datasets:
         for f in fracs:
             for r in reg_lambda:
                 args = ['python3']
-                args.append('fair_subset.py')
+                args.append('Fair_Subset.py')
                 args.append(datadir + dset)
                 args.append(dset)
                 args.append(str(f))
