@@ -188,7 +188,7 @@ def census_load(path,dim, save_data=False):
                 continue
 
             if temp[-1].strip() == "<=50K" or temp[-1].strip() == "<=50K.":
-                target.append(0) 
+                target.append(-1) 
             else:
                 target.append(1)
             

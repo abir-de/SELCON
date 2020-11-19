@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 from utils.custom_dataset import load_dataset_custom
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, DualNet
+from model.Find_Fair_Subset import FindSubset
 
 import math
 import random
@@ -46,7 +47,9 @@ reg_lambda = float(sys.argv[6])
 
 batch_size = 12000
 
-learning_rate = 0.005
+learning_rate = 0.05
+#change = [250,650,1250,1950,4000]#,4200]
+
 all_logs_dir = './results/LR/' + data_name + '/' + str(fraction) + '/' + str(select_every)
 print(all_logs_dir)
 subprocess.run(["mkdir", "-p", all_logs_dir])
@@ -67,6 +70,12 @@ if data_name == 'Community_Crime':
 else:
     x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
         = get_slices(data_name,fullset[0], fullset[1],device)
+    
+    #x_val_list, y_val_list = x_val_list[:-1], y_val_list[:-1]
+    #x_tst_list, y_tst_list = x_tst_list[:-1], y_tst_list[:-1]
+    #val_classes, tst_classes = val_classes[:-1], tst_classes[:-1]
+
+    change = [250,650,1250,1900,2150]
 #
 #x_tst_list, y_tst_list, tst_classes = get_slices('Community_Crime',testset[0], testset[1],4,device)
 
@@ -92,6 +101,8 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
     #main_optimizer = optim.SGD(main_model.parameters(), lr=learning_rate)
     main_optimizer = torch.optim.Adam(main_model.parameters(), lr=learning_rate)
 
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change, gamma=0.5)
+
     if func_name == 'Random':
         print("Starting Random Run!")
     elif func_name == 'Random with Prior':
@@ -110,10 +121,13 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
         
         loss = criterion(scores, targets) +  reg_lambda*l2_reg *len(idxs)
         loss.backward()
+
         main_optimizer.step()
+        scheduler.step()
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
+            #print(main_optimizer.param_groups[0]['lr'])
 
     tst_accuracy = torch.zeros(len(x_tst_list))
     val_accuracy = torch.zeros(len(x_val_list))
@@ -128,15 +142,15 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
         
         for j in range(len(x_val_list)):
 
-            #print(val_classes[j],len(x_val_list[j]))
+            print(val_classes[j],len(x_val_list[j]))
             
             val_out = main_model(x_val_list[j])
             val_loss = criterion(val_out, y_val_list[j])
             val_accuracy[j] = val_loss            
-
+        print()
         for j in range(len(x_tst_list)):
 
-            #print(tst_classes[j],len(x_tst_list[j]))
+            print(tst_classes[j],len(x_tst_list[j]))
             
             outputs = main_model(x_tst_list[j])
             test_loss = criterion(outputs, y_tst_list[j])
@@ -148,9 +162,6 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
     main_model = RegressionNet(M)
     main_model = main_model.to(device)
-
-    #dual_model = DualNet(len(x_val_list))
-    #dual_model = dual_model.to(device)
     
     idxs = start_rand_idxs
     criterion = nn.MSELoss()
@@ -162,29 +173,52 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 {'params': alphas}], lr=learning_rate) #'''
     main_optimizer = torch.optim.Adam([
                 {'params': main_model.parameters()},
-                {'params': alphas,'lr':learning_rate*10}], lr=learning_rate) #{'params': alphas}
+                {'params': alphas,'lr':learning_rate}], lr=learning_rate) #{'params': alphas} #
+
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change,\
+         gamma=0.5) #[e*2 for e in change]
 
     alphas.requires_grad = False
-    #main_optimizer.param_groups.append({'params': alphas })
-    #dual_optimizer = optim.SGD(dual_model.parameters(), lr=learning_rate)
-    #dual_optimizer = torch.optim.Adam(dual_model.parameters(), lr=learning_rate)
 
-    if func_name == 'Random':
+    val_size = torch.zeros(len(x_val_list),dtype=torch.long)
+    for j in range(len(x_val_list)):
+        val_size[j] = len(y_val_list[j])
+
+    x_val_combined = torch.cat(x_val_list)
+    y_val_combined = torch.cat(y_val_list)
+
+    delta_extend = torch.repeat_interleave(deltas,val_size, dim=0)
+
+    if func_name == 'Full':
         print("Starting Full with fairness Run!")
+    elif func_name == 'Fair_subset':
 
+        '''fsubset = FindSubset(x_trn, y_trn, x_val_combined, y_val_combined,main_model,criterion,\
+            val_size,device,delta_extend)
+        
+        cached_state_dict = copy.deepcopy(main_model.state_dict())
+        clone_dict = copy.deepcopy(main_model.state_dict())
+        fsubset.precompute(clone_dict)
+        model.load_state_dict(cached_state_dict)'''
+        
+        print("Starting Subset of size ",fraction," with fairness Run!")
+    
     for i in range(num_epochs):
 
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
         inputs, targets = x_trn[idxs], y_trn[idxs]
         main_optimizer.zero_grad()
-        #dual_optimizer.zero_grad()
         l2_reg = 0
         
         scores = main_model(inputs)
         for param in main_model.parameters():
             l2_reg += torch.norm(param)
         
-        #slice_losses = []
+        '''alpha_extend = torch.repeat_interleave(alphas,val_size, dim=0)
+        val_scores = main_model(x_val_combined)
+        constraint = criterion(val_scores, y_val_combined) - delta_extend
+        multiplier = torch.dot(alpha_extend,constraint)'''
+
         constraint = torch.zeros(len(x_val_list))
         for j in range(len(x_val_list)):
             
@@ -192,23 +226,23 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             scores_j = main_model(inputs_j)
             constraint[j] = criterion(scores_j, targets_j) - deltas[j]
 
-        #constraint = torch.dot(alphas,torch.tensor(slice_losses))
         multiplier = torch.dot(alphas,constraint)
 
         loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(idxs) + multiplier
         loss.backward()
-        #getBack(loss.grad_fn)
+        
         main_optimizer.step()
+        scheduler.step()
+        main_optimizer.param_groups[1]['lr'] = learning_rate
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
+            #print(main_optimizer.param_groups)#[0]['lr'])
         
         for param in main_model.parameters():
             param.requires_grad = False
         alphas.requires_grad = True
 
-        #print(main_optimizer.param_groups)
-
         constraint = torch.zeros(len(x_val_list))
         for j in range(len(x_val_list)):
             
@@ -216,38 +250,27 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             scores_j = main_model(inputs_j)
             constraint[j] = criterion(scores_j, targets_j) - deltas[j]
 
-        #constraint = torch.dot(alphas,torch.tensor(slice_losses))
         multiplier = torch.dot(alphas,-1.0*constraint)
-        #print(constraint)
         
         main_optimizer.zero_grad()
         multiplier.backward()
-        #print(alphas.grad.data)
-        #print(alphas)
+        
         main_optimizer.step()
-        #alphas += learning_rate*alphas.grad.data
-        #print(alphas)
+        #scheduler.step()
 
         alphas.requires_grad = False
         alphas.clamp_(min=0.0)
-        #print(alphas)
 
         for param in main_model.parameters():
             param.requires_grad = True
 
-        #print(main_optimizer.param_groups)
-        
-        #if i %2 == 0:
-        '''loss_dual = -(criterion(scores, targets) +  reg_lambda*l2_reg + dual_model(constraint))
-        loss_dual.backward()
-        dual_optimizer.step()
-        with torch.no_grad():
-            for param in dual_model.parameters():
-                param.clamp_(min=0.0)'''
+        #if ((i + 1) % select_every == 0) and func_name not in ['Full']:
 
     tst_accuracy = torch.zeros(len(x_tst_list))
     val_accuracy = torch.zeros(len(x_val_list))
     
+    print(constraint)
+    print(alphas)
     main_model.eval()
     with torch.no_grad():
         full_trn_out = main_model(x_trn)
@@ -272,14 +295,14 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 
 starting = time.process_time() 
-full = train_model('Random', np.random.choice(N, size=N, replace=False))
-ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)
-
-starting = time.process_time() 
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
 print("Full with fairness training time ",ending-starting, file=logfile)
+
+starting = time.process_time() 
+full = train_model('Random', np.random.choice(N, size=N, replace=False))
+ending = time.process_time() 
+print("Full training time ",ending-starting, file=logfile)
 
 methods = [full,full_fair]
 methods_names=["Full","Full with Fairness"] 

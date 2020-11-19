@@ -15,7 +15,7 @@ for dset in datasets:
         for f in fracs:
             for r in reg_lambda:
                 args = ['python3']
-                args.append('fair_subset.py')
+                args.append('Fair_Subset.py')
                 args.append(datadir + dset)
                 args.append(dset)
                 args.append(str(f))

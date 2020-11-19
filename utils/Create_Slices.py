@@ -127,8 +127,8 @@ def get_slices(data_name, data,labels,device,buckets=None):
         classes,times = np.unique(data[:,8],return_counts=True) 
         times, classes = zip(*sorted(zip(times, classes)))
 
-        print(times)
-        print(classes)
+        #print(times)
+        #print(classes)
 
         N = int(0.1*len(data)/len(classes))
         
