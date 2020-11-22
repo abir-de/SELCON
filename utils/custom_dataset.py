@@ -109,6 +109,41 @@ def libsvm_file_load(path,dim, save_data=False):
         np.save(target_np_path, Y_label)
     return (X_data, Y_label)
 
+def community_online_news(path,dim, save_data=False):
+
+    data = []
+    target = []
+    with open(path) as fp:
+        line = fp.readline()
+        while line:
+            temp = [i.strip() for i in line.strip().split(",")][2:]
+
+            target.append(float(temp[-1]))
+            
+            temp_data = [0.0]*dim
+            
+            #print(temp)
+
+            for i in range(len(temp[:-1])):
+
+                if temp[i] != '?':
+                    temp_data[i] = float(temp[i])
+            
+            data.append(temp_data)
+            line = fp.readline()
+    
+    X_data = np.array(data, dtype=np.float32)
+    Y_label = np.array(target)
+    
+    if save_data:
+        # Save the numpy files to the folder where they come from
+        data_np_path = path + '.data.npy'
+        target_np_path = path + '.label.npy'
+        np.save(data_np_path, X_data)
+        np.save(target_np_path, Y_label)
+    return (X_data, Y_label)
+
+
 def community_crime_load(path,dim, save_data=False):
 
     data = []
@@ -188,7 +223,7 @@ def census_load(path,dim, save_data=False):
                 continue
 
             if temp[-1].strip() == "<=50K" or temp[-1].strip() == "<=50K.":
-                target.append(-1) 
+                target.append(0) 
             else:
                 target.append(1)
             
@@ -289,3 +324,30 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
             #testset = CustomDataset(x_tst, y_tst)
 
         return fullset, data_dims # valset, testset,
+
+    elif dset_name == 'OnlineNewsPopularity':
+        trn_file = os.path.join(datadir, 'OnlineNewsPopularity.csv')
+
+        data_dims = 58
+
+        x_trn, y_trn = community_online_news(trn_file, dim=data_dims)
+        
+        '''x_trn, x_tst, y_trn, y_tst= train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
+        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
+        sc = StandardScaler()
+        x_trn = sc.fit_transform(x_trn)
+        x_val = sc.transform(x_val)
+        x_tst = sc.transform(x_tst)'''
+
+        if isnumpy:
+            fullset = (x_trn, y_trn)
+            #valset = (x_val, y_val)
+            #testset = (x_tst, y_tst)
+
+        else:
+            fullset = CustomDataset(x_trn, y_trn)
+            #valset = CustomDataset(x_val, y_val)
+            #testset = CustomDataset(x_tst, y_tst)
+
+        return fullset, data_dims # valset, testset,
+

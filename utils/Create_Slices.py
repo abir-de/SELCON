@@ -122,9 +122,11 @@ def get_slices(data_name, data,labels,device,buckets=None):
 
     elif data_name == 'census':
 
+        protect_feature = 8 #9
+
         total_set = set(list(np.arange(len(data))))
         
-        classes,times = np.unique(data[:,8],return_counts=True) 
+        classes,times = np.unique(data[:,protect_feature],return_counts=True) 
         times, classes = zip(*sorted(zip(times, classes)))
 
         #print(times)
@@ -138,7 +140,7 @@ def get_slices(data_name, data,labels,device,buckets=None):
             indices=[]
             indices_tst=[]
             
-            idx = (data[:,8] == cl).nonzero()[0].flatten()
+            idx = (data[:,protect_feature] == cl).nonzero()[0].flatten()
             idx.tolist()
 
             curr_N = int(len(idx)/3)
@@ -165,7 +167,7 @@ def get_slices(data_name, data,labels,device,buckets=None):
         indices=[]
         indices_tst=[]
         
-        idx = (data[:,8] == classes[-1]).nonzero()[0].flatten()
+        idx = (data[:,protect_feature] == classes[-1]).nonzero()[0].flatten()
         idx.tolist()
 
         indices.extend(list(np.random.choice(idx, size=N+count, replace=False)))
@@ -182,8 +184,8 @@ def get_slices(data_name, data,labels,device,buckets=None):
         tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
         tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
 
-        #final_lables = [j for sub in data_class for j in sub]
+        final_lables = classes
         left = list(total_set)
         
-    return data[left], labels[left], val_data_slices, val_label_slices, classes, tst_data_slices,\
-        tst_label_slices,classes
+    return data[left], labels[left], val_data_slices, val_label_slices, final_lables, tst_data_slices,\
+        tst_label_slices,final_lables

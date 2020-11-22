@@ -5,7 +5,7 @@ import sys
 import time
 import datetime
 
-sys.path.append('/home/durga/Documents/Phd_Work/Code/Fair-data-selection') 
+sys.path.append('../.') 
 from utils.custom_dataset import load_dataset_custom
 from utils.Create_Slices import get_slices
 #from model.LinearRegression import RegressionNet, DualNet
@@ -22,7 +22,7 @@ def regularizer(beta):
     return cp.pnorm(beta, p=2)**2
 
 def objective_fn(X, Y, beta, lambd):
-    return loss_fn(X, Y, beta) + lambd * regularizer(beta)
+    return loss_fn(X, Y, beta) + lambd*len(X) * regularizer(beta)
 
 def mse(X, Y, beta):
     #print(X.shape)
@@ -70,21 +70,11 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])'''
 
 fraction = 1
-data_name = 'census'
+data_name = 'Community_Crime'
+#data_name = 'census'
 reg_lambda = 0.01
 
 datadir = '../../Datasets/data/'+data_name+"/"
-
-all_logs_dir = './results/CVX/' + data_name + '/' + str(fraction) + '/' 
-print(all_logs_dir)
-subprocess.run(["mkdir", "-p", all_logs_dir])
-path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
-logfile = open(path_logfile, 'w')
-exp_name = data_name + '_fraction:' + str(fraction) 
-print(exp_name)
-exp_start_time = datetime.datetime.now()
-print("=======================================", file=logfile)
-print(exp_name, str(exp_start_time), file=logfile)
 
 fullset, data_dims = load_dataset_custom(datadir, data_name, True) # valset, testset,
 
@@ -110,18 +100,21 @@ beta = cp.Variable(x_trn.shape[1])
 lambd = cp.Parameter(nonneg=True)
 objective = cp.Minimize(objective_fn(x_trn, y_trn, beta, lambd))
 
-constraints = []
-for i in range(len(x_val_list)):
-    constraints = constraints + [mse(x_val_list[i], y_val_list[i], beta) <= 0.1]
+#objective = cp.Minimize(cp.sum_squares(x_trn @ beta - y_trn) + lambd *cp.pnorm(beta, p=2)**2)
 
-prob = cp.Problem(objective)#, constraints)
+constraints = []
+"""for i in range(len(x_val_list)):
+    constraints = constraints + [mse(x_val_list[i], y_val_list[i], beta) <= 0.1]
+    #constraints = constraints + [cp.sum_squares(x_val_list[i] @ beta - y_val_list[i]) <= 0.1]"""
+
+prob = cp.Problem(objective, constraints)
 
 lambd.value = reg_lambda
 # The optimal objective value is returned by `prob.solve()`.
-result = prob.solve(verbose=True)
+result = prob.solve()#verbose=True)
 
 print(beta.value)
 # The optimal Lagrange multiplier for a constraint is stored in
 # `constraint.dual_value`.
-#print(constraints[0].dual_value)
+print(constraints[0].dual_value)
 
