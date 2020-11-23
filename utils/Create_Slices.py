@@ -1,5 +1,8 @@
 import numpy as np
 import torch
+from sklearn.preprocessing import StandardScaler
+from sklearn import preprocessing
+
 
 def gen_rand_prior_indices(curr_size,num_cls,x_trn,y_trn,remainList=None):
 
@@ -39,6 +42,11 @@ def get_slices(data_name, data,labels,device,buckets=None):
 
     tst_data_slices = []
     tst_label_slices =[]
+
+    '''sc = StandardScaler()
+    x_trn = sc.fit_transform(x_trn)
+    x_val = sc.transform(x_val)
+    x_tst = sc.transform(x_tst)'''
 
     if data_name == 'Community_Crime':
         protect_feature =[2,3,4,5]
@@ -118,7 +126,8 @@ def get_slices(data_name, data,labels,device,buckets=None):
             tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
 
         final_lables = [j for sub in data_class for j in sub]
-        left = list(total_set)      
+        left = list(total_set)    
+        data = data[left]
 
     elif data_name == 'census':
 
@@ -158,10 +167,10 @@ def get_slices(data_name, data,labels,device,buckets=None):
             if curr_N < N:
                 count += (N - curr_N)
 
-            val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
+            val_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices])).float().to(device))
             val_label_slices.append(torch.from_numpy(labels[indices]).float().to(device))
 
-            tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
+            tst_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices_tst])).float().to(device))
             tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
 
         indices=[]
@@ -178,14 +187,15 @@ def get_slices(data_name, data,labels,device,buckets=None):
         indices_tst.extend(list(np.random.choice(idx, size=N+count, replace=False)))
         total_set.difference(indices_tst)
 
-        val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
+        val_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices])).float().to(device))
         val_label_slices.append(torch.from_numpy(labels[indices]).float().to(device))
 
-        tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
+        tst_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices_tst])).float().to(device))
         tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
 
         final_lables = classes
         left = list(total_set)
+        data = preprocessing.normalize(data[left])
         
-    return data[left], labels[left], val_data_slices, val_label_slices, final_lables, tst_data_slices,\
+    return data, labels[left], val_data_slices, val_label_slices, final_lables, tst_data_slices,\
         tst_label_slices,final_lables

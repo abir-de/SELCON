@@ -70,8 +70,6 @@ if data_name == 'Community_Crime':
 
     change = [20,40,80,160]
 
-    x_trn, y_trn = torch.from_numpy(x_trn).float().to(device),torch.from_numpy(y_trn).float().to(device)
-
 elif data_name == 'census':
     x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
         = get_slices(data_name,fullset[0], fullset[1],device)
@@ -82,7 +80,7 @@ elif data_name == 'census':
 
     num_cls = 2
 
-    change = [300,700,1300,1350] #[100,150,160,170,200]
+    change = [50,100,150,200] #[100,150,160,170,200]
 #
 #x_tst_list, y_tst_list, tst_classes = get_slices('Community_Crime',testset[0], testset[1],4,device)
 
@@ -150,7 +148,7 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
         full_trn_loss = criterion(full_trn_out, y_trn)
         sub_trn_out = main_model(x_trn[idxs])
         sub_trn_loss = criterion(sub_trn_out, y_trn[idxs])
-        print("Final SubsetTrn and FullTrn Loss:", sub_trn_loss.item(),full_trn_loss.item())
+        print("Final SubsetTrn and FullTrn Loss:", sub_trn_loss.item(),full_trn_loss.item(),file=logfile)
         
         for j in range(len(x_val_list)):
 
@@ -245,6 +243,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         multiplier = torch.dot(alphas,constraint)
 
         loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(idxs) + multiplier
+        #print(criterion(scores, targets) , reg_lambda*l2_reg*len(idxs) ,multiplier)
         loss.backward()
         
         main_optimizer.step()
@@ -294,7 +293,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         full_trn_loss = criterion(full_trn_out, y_trn)
         sub_trn_out = main_model(x_trn[idxs])
         sub_trn_loss = criterion(sub_trn_out, y_trn[idxs])
-        print("Final SubsetTrn and FullTrn Loss:", full_trn_loss.item(), sub_trn_loss.item())
+        print("Final SubsetTrn and FullTrn Loss:", full_trn_loss.item(), sub_trn_loss.item(),file=logfile)
         
         for j in range(len(x_val_list)):
             

@@ -11,6 +11,8 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 from torchvision import transforms
 
+from sklearn import preprocessing
+
 
 ## Custom PyTorch Dataset Class wrapper
 class CustomDataset(Dataset):
@@ -305,6 +307,8 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
         data_dims = 122
 
         x_trn, y_trn = community_crime_load(trn_file, dim=data_dims)
+
+        #x_trn = preprocessing.normalize(x_trn)
         
         '''x_trn, x_tst, y_trn, y_tst= train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
         x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
@@ -348,6 +352,7 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
             fullset = CustomDataset(x_trn, y_trn)
             #valset = CustomDataset(x_val, y_val)
             #testset = CustomDataset(x_tst, y_tst)
+
 
         return fullset, data_dims # valset, testset,
 

@@ -11,6 +11,8 @@ from utils.Create_Slices import get_slices
 #from model.LinearRegression import RegressionNet, DualNet
 #from model.Find_Fair_Subset import FindSubset
 
+from sklearn.preprocessing import StandardScaler
+
 import math
 import random
 import cvxpy as cp
@@ -85,16 +87,21 @@ else:
     x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
         = get_slices(data_name,fullset[0], fullset[1],'cpu')
 
-for i in range(len(x_val_list)):
-    x_val_list[i] = x_val_list[i].numpy().astype(np.float32)
-    y_val_list[i] = y_val_list[i].numpy().astype(np.float32)
-    x_tst_list[i] = x_tst_list[i].numpy().astype(np.float32)
-    y_tst_list[i] = y_tst_list[i].numpy().astype(np.float32)
-
 x_trn, y_trn = x_trn.astype(np.float32), y_trn.astype(np.float32) #np.delete(fullset[0],protect_feature, axis=1)
+
+sc = StandardScaler()
+#x_trn = sc.fit_transform(x_trn)
+
+for i in range(len(x_val_list)):
+    x_val_list[i] = x_val_list[i].numpy().astype(np.float32)#sc.transform(x_val_list[i].numpy().astype(np.float32))
+    y_val_list[i] = y_val_list[i].numpy().astype(np.float32)
+    x_tst_list[i] = x_tst_list[i].numpy().astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
+    y_tst_list[i] = y_tst_list[i].numpy().astype(np.float32)
 
 #print(x_trn[0])
 #print(y_trn[0])
+
+#x_trn = x_trn/np.linalg.norm(x_trn)
 
 beta = cp.Variable(x_trn.shape[1])
 lambd = cp.Parameter(nonneg=True)
