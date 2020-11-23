@@ -12,7 +12,7 @@ import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from utils.custom_dataset import load_dataset_custom
 from utils.Create_Slices import get_slices
-from model.LinearRegression import RegressionNet, DualNet
+from model.LinearRegression import RegressionNet, LogisticNet
 from model.Find_Fair_Subset import FindSubset
 
 import math
@@ -67,7 +67,12 @@ fullset, data_dims = load_dataset_custom(datadir, data_name, True) # valset, tes
 if data_name == 'Community_Crime':
     x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
         = get_slices(data_name,fullset[0], fullset[1],device,3)
-else:
+
+    change = [20,40,80,160]
+
+    x_trn, y_trn = torch.from_numpy(x_trn).float().to(device),torch.from_numpy(y_trn).float().to(device)
+
+elif data_name == 'census':
     x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
         = get_slices(data_name,fullset[0], fullset[1],device)
     
@@ -75,12 +80,14 @@ else:
     #x_tst_list, y_tst_list = x_tst_list[:-1], y_tst_list[:-1]
     #val_classes, tst_classes = val_classes[:-1], tst_classes[:-1]
 
-    change = [250,650,1250,1900,2150]
+    num_cls = 2
+
+    change = [300,700,1300,1350] #[100,150,160,170,200]
 #
 #x_tst_list, y_tst_list, tst_classes = get_slices('Community_Crime',testset[0], testset[1],4,device)
 
 x_trn, y_trn = torch.from_numpy(x_trn).float().to(device),\
-    torch.from_numpy(y_trn).float().to(device) #np.delete(fullset[0],protect_feature, axis=1)
+        torch.from_numpy(y_trn).float().to(device) #np.delete(fullset[0],protect_feature, axis=1)
 
 N, M = x_trn.shape
 bud = int(fraction * N)
@@ -92,11 +99,16 @@ deltas = torch.tensor([0.1 for _ in range(len(x_val_list))])
 
 def train_model(func_name,start_rand_idxs=None, bud=None):
 
-    main_model = RegressionNet(M)
-    main_model = main_model.to(device)
-    
     idxs = start_rand_idxs
+
+    '''if data_name in ["census"]:
+        main_model = LogisticNet(M,num_cls)
+        criterion = nn.CrossEntropyLoss()
+    else:'''
     criterion = nn.MSELoss()
+    main_model = RegressionNet(M)
+   
+    main_model = main_model.to(device)
     #criterion_sum = nn.MSELoss(reduction='sum')
     #main_optimizer = optim.SGD(main_model.parameters(), lr=learning_rate)
     main_optimizer = torch.optim.Adam(main_model.parameters(), lr=learning_rate)
@@ -160,15 +172,19 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
 
 def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
-    main_model = RegressionNet(M)
-    main_model = main_model.to(device)
-    
     idxs = start_rand_idxs
+
+    '''if data_name in ["census"]:
+        main_model = LogisticNet(M,num_cls)
+        criterion = nn.CrossEntropyLoss()
+    else:'''
     criterion = nn.MSELoss()
+    main_model = RegressionNet(M)
+
     #criterion_sum = nn.MSELoss(reduction='sum')
     
-    #alphas = torch.rand_like(deltas,requires_grad=True) 
-    alphas = torch.ones_like(deltas,requires_grad=True)
+    alphas = torch.rand_like(deltas,requires_grad=True) 
+    #alphas = torch.ones_like(deltas,requires_grad=True)
     '''dual_optimizer = optim.SGD([{'params': main_model.parameters()},
                 {'params': alphas}], lr=learning_rate) #'''
     main_optimizer = torch.optim.Adam([
@@ -233,7 +249,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         
         main_optimizer.step()
         scheduler.step()
-        main_optimizer.param_groups[1]['lr'] = learning_rate
+        #main_optimizer.param_groups[1]['lr'] = learning_rate
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
@@ -260,6 +276,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
         alphas.requires_grad = False
         alphas.clamp_(min=0.0)
+        #print(alphas)
 
         for param in main_model.parameters():
             param.requires_grad = True

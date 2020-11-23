@@ -9,6 +9,7 @@ class RegressionNet(nn.Module):
     
     def forward(self, x, last=False):
         scores = self.linear(x)
+        #scores = torch.sigmoid(self.linear(x))
         return scores.view(-1)
         '''if last:
             return scores, x
@@ -17,6 +18,17 @@ class RegressionNet(nn.Module):
 
     #def get_feature_dim(self):
     #    return self.feature_dim
+
+class LogisticNet(nn.Module):
+    def __init__(self, input_dim,num_cls):
+        super(LogisticNet, self).__init__()
+        self.linear = nn.Linear(input_dim,num_cls)
+        #self.feature_dim = input_dim
+    
+    def forward(self, x, last=False):
+        scores = self.linear(x)
+        #scores = torch.sigmoid(self.linear(x))
+        return scores
 
 class DualNet(nn.Module):
     def __init__(self, input_dim):
