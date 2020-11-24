@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler #StandardScaler
 from sklearn import preprocessing
 
 
@@ -127,8 +127,101 @@ def get_slices(data_name, data,labels,device,buckets=None):
 
         final_lables = [j for sub in data_class for j in sub]
         left = list(total_set)    
-        data = data[left]
+        data_left = data[left]
 
+    elif data_name == 'OnlineNewsPopularity':
+
+        protect_feature = [11,12,13,14,15,16]
+
+        final_lables = [ 'Lifestyle','Entertainment','Business','Social Media','Tech','World']
+
+        total_set = set(list(np.arange(len(data))))
+
+        N = int(0.1*len(data)/len(protect_feature))
+
+        max_times = 0
+        
+        for pf in protect_feature:            
+        
+            classes,times = np.unique(data[:,pf],return_counts=True) 
+
+            one_id = (classes == 1.0).nonzero()[0].flatten()[0]
+
+            if max_times < times[one_id]:
+                max_times = times[one_id]
+                max_id = pf
+
+        most = final_lables[max_id-protect_feature[0]]
+        final_lables.remove(most)
+        final_lables.append(most)
+
+        count = 0
+        
+        for pf in protect_feature:
+
+            if pf == max_id:
+                continue
+            
+            idx = (data[:,pf] == 1.0).nonzero()[0].flatten()
+            idx.tolist()
+            idxs = set(idx)
+            idxs.intersection_update(total_set)
+            idx = list(idxs)
+            #print(cl,len(idx))
+
+            curr_N = int(len(idx)/3)
+
+            #print(curr_N,N)
+            
+            indices = list(np.random.choice(idx, size=min(N,curr_N), replace=False))
+            total_set.difference(indices)
+            idxs.difference(indices)
+            idx = list(idxs)
+            indices_tst = list(np.random.choice(idx, size=min(N,curr_N), replace=False))
+            total_set.difference(indices_tst)
+            
+            if curr_N < N:
+                count += (N - curr_N)
+
+            val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
+            val_label_slices.append(torch.from_numpy(labels[indices]).float().to(device))
+
+            tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
+            tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
+
+            
+        idx = (data[:,max_id] == 1.0).nonzero()[0].flatten()
+        idx.tolist()
+        idxs = set(idx)
+        idxs.intersection_update(total_set)
+        idx = list(idxs)
+
+        indices = list(np.random.choice(idx, size=N+count, replace=False))
+        total_set.difference(indices)
+        idxs.difference(indices)
+        idx = list(idxs)
+        indices_tst = list(np.random.choice(idx, size=N+count, replace=False)) 
+        total_set.difference(indices_tst)
+
+        val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
+        val_label_slices.append(torch.from_numpy(labels[indices]).float().to(device))
+
+        tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
+        tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
+
+        left = list(total_set)
+        sc = MinMaxScaler() #StandardScaler()
+
+        print(data[left][0])
+        data_left = sc.fit_transform(data[left])
+        print(data_left[0])
+        #preprocessing.normalize(data[left])
+
+        for j in range(len(val_data_slices)):
+            
+            val_data_slices[j] = torch.from_numpy(sc.transform(val_data_slices[j])).float().to(device)
+            tst_data_slices[j] = torch.from_numpy(sc.transform(tst_data_slices[j])).float().to(device)
+    
     elif data_name == 'census':
 
         protect_feature = 8 #9
@@ -195,7 +288,7 @@ def get_slices(data_name, data,labels,device,buckets=None):
 
         final_lables = classes
         left = list(total_set)
-        data = preprocessing.normalize(data[left])
+        data_left = preprocessing.normalize(data[left])
         
-    return data, labels[left], val_data_slices, val_label_slices, final_lables, tst_data_slices,\
+    return data_left, labels[left], val_data_slices, val_label_slices, final_lables, tst_data_slices,\
         tst_label_slices,final_lables

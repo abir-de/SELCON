@@ -80,7 +80,13 @@ elif data_name == 'census':
 
     num_cls = 2
 
-    change = [50,100,150,200] #[100,150,160,170,200]
+    change = [50,100,150,170] #[100,150,160,170,200]
+
+elif data_name == 'OnlineNewsPopularity':
+    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
+        = get_slices(data_name,fullset[0], fullset[1],device)
+
+    change = [100] #[100,150,160,170,200]
 #
 #x_tst_list, y_tst_list, tst_classes = get_slices('Community_Crime',testset[0], testset[1],4,device)
 
@@ -199,9 +205,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         val_size[j] = len(y_val_list[j])
 
     x_val_combined = torch.cat(x_val_list)
-    y_val_combined = torch.cat(y_val_list)
+    #y_val_combined = torch.cat(y_val_list)
 
-    delta_extend = torch.repeat_interleave(deltas,val_size, dim=0)
+    #delta_extend = torch.repeat_interleave(deltas,val_size, dim=0)
 
     if func_name == 'Full':
         print("Starting Full with fairness Run!")
@@ -243,15 +249,16 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         multiplier = torch.dot(alphas,constraint)
 
         loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(idxs) + multiplier
-        #print(criterion(scores, targets) , reg_lambda*l2_reg*len(idxs) ,multiplier)
         loss.backward()
         
         main_optimizer.step()
         scheduler.step()
-        #main_optimizer.param_groups[1]['lr'] = learning_rate
+        #main_optimizer.param_groups[1]['lr'] = learning_rate/2
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
+            #print(alphas,constraint)
+            print(criterion(scores, targets) , reg_lambda*l2_reg*len(idxs) ,multiplier)
             #print(main_optimizer.param_groups)#[0]['lr'])
         
         for param in main_model.parameters():
@@ -265,7 +272,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             scores_j = main_model(inputs_j)
             constraint[j] = criterion(scores_j, targets_j) - deltas[j]
 
-        multiplier = torch.dot(alphas,-1.0*constraint)
+        multiplier = torch.dot(-1.0*alphas,constraint)
+
+        #print(alphas,constraint)
         
         main_optimizer.zero_grad()
         multiplier.backward()

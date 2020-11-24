@@ -117,6 +117,7 @@ def community_online_news(path,dim, save_data=False):
     target = []
     with open(path) as fp:
         line = fp.readline()
+        line = fp.readline()
         while line:
             temp = [i.strip() for i in line.strip().split(",")][2:]
 

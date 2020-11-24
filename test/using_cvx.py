@@ -72,7 +72,8 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])'''
 
 fraction = 1
-data_name = 'Community_Crime'
+#data_name = 'Community_Crime'
+data_name = 'OnlineNewsPopularity'
 #data_name = 'census'
 reg_lambda = 0.01
 
@@ -93,10 +94,16 @@ sc = StandardScaler()
 #x_trn = sc.fit_transform(x_trn)
 
 for i in range(len(x_val_list)):
-    x_val_list[i] = x_val_list[i].numpy().astype(np.float32)#sc.transform(x_val_list[i].numpy().astype(np.float32))
-    y_val_list[i] = y_val_list[i].numpy().astype(np.float32)
-    x_tst_list[i] = x_tst_list[i].numpy().astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
+    if data_name == 'OnlineNewsPopularity':
+        x_val_list[i] = x_val_list[i].astype(np.float32)#sc.transform(x_val_list[i].numpy().astype(np.float32))
+        x_tst_list[i] = x_tst_list[i].astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
+
+    else:
+        x_val_list[i] = x_val_list[i].numpy().astype(np.float32)#sc.transform(x_val_list[i].numpy().astype(np.float32))
+        x_tst_list[i] = x_tst_list[i].numpy().astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
+    
     y_tst_list[i] = y_tst_list[i].numpy().astype(np.float32)
+    y_val_list[i] = y_val_list[i].numpy().astype(np.float32)
 
 #print(x_trn[0])
 #print(y_trn[0])
@@ -118,10 +125,10 @@ prob = cp.Problem(objective, constraints)
 
 lambd.value = reg_lambda
 # The optimal objective value is returned by `prob.solve()`.
-result = prob.solve()#verbose=True)
+result = prob.solve(verbose=True)
 
 print(beta.value)
 # The optimal Lagrange multiplier for a constraint is stored in
 # `constraint.dual_value`.
-print(constraints[0].dual_value)
+#print(constraints[0].dual_value)
 
