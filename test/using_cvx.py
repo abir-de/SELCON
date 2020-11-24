@@ -94,13 +94,13 @@ sc = StandardScaler()
 #x_trn = sc.fit_transform(x_trn)
 
 for i in range(len(x_val_list)):
-    if data_name == 'OnlineNewsPopularity':
+    '''if data_name == 'OnlineNewsPopularity':
         x_val_list[i] = x_val_list[i].astype(np.float32)#sc.transform(x_val_list[i].numpy().astype(np.float32))
         x_tst_list[i] = x_tst_list[i].astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
 
-    else:
-        x_val_list[i] = x_val_list[i].numpy().astype(np.float32)#sc.transform(x_val_list[i].numpy().astype(np.float32))
-        x_tst_list[i] = x_tst_list[i].numpy().astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
+    else:'''
+    x_val_list[i] = x_val_list[i].numpy().astype(np.float32)#sc.transform(x_val_list[i].numpy().astype(np.float32))
+    x_tst_list[i] = x_tst_list[i].numpy().astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
     
     y_tst_list[i] = y_tst_list[i].numpy().astype(np.float32)
     y_val_list[i] = y_val_list[i].numpy().astype(np.float32)
