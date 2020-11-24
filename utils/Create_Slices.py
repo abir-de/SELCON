@@ -260,10 +260,12 @@ def get_slices(data_name, data,labels,device,buckets=None):
             if curr_N < N:
                 count += (N - curr_N)
 
-            val_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices])).float().to(device))
+            #val_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices])).float().to(device))
+            val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
             val_label_slices.append(torch.from_numpy(labels[indices]).float().to(device))
 
-            tst_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices_tst])).float().to(device))
+            #tst_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices_tst])).float().to(device))
+            tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
             tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
 
         indices=[]
@@ -280,10 +282,12 @@ def get_slices(data_name, data,labels,device,buckets=None):
         indices_tst.extend(list(np.random.choice(idx, size=N+count, replace=False)))
         total_set.difference(indices_tst)
 
-        val_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices])).float().to(device))
+        #val_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices])).float().to(device))
+        val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
         val_label_slices.append(torch.from_numpy(labels[indices]).float().to(device))
 
-        tst_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices_tst])).float().to(device))
+        #tst_data_slices.append(torch.from_numpy(preprocessing.normalize(data[indices_tst])).float().to(device))
+        tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
         tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
 
         final_lables = classes

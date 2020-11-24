@@ -108,7 +108,7 @@ for i in range(len(x_val_list)):
 #print(x_trn[0])
 #print(y_trn[0])
 
-#x_trn = x_trn/np.linalg.norm(x_trn)
+x_trn = x_trn/np.linalg.norm(x_trn)
 
 beta = cp.Variable(x_trn.shape[1])
 lambd = cp.Parameter(nonneg=True)
