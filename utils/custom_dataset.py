@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import os
 import torch
 import torchvision
@@ -58,7 +59,6 @@ class CustomDataset_WithId(Dataset):
             sample_data = self.transform(sample_data)
         return sample_data, label,idx #.astype('float32')
 
-
 ## Utility function to load datasets from libsvm datasets
 def csv_file_load(path,dim, save_data=False):
     data = []
@@ -103,6 +103,71 @@ def libsvm_file_load(path,dim, save_data=False):
         line = fp.readline()
     X_data = np.array(data,dtype=np.float32)
     Y_label = np.array(target)
+    if save_data:
+        # Save the numpy files to the folder where they come from
+        data_np_path = path + '.data.npy'
+        target_np_path = path + '.label.npy'
+        np.save(data_np_path, X_data)
+        np.save(target_np_path, Y_label)
+    return (X_data, Y_label)
+
+def clean_lawschool_full(path):
+   
+    df = pd.read_csv(path)
+    df = df.dropna()
+    # remove y from df
+    y = df['ugpa']
+    y = y / 4
+    df = df.drop('ugpa', 1)
+    # convert gender variables to 0,1
+    df['gender'] = df['gender'].map({'male': 1, 'female': 0})
+    # add bar1 back to the feature set
+    df_bar = df['bar1']
+    df = df.drop('bar1', 1)
+    df['bar1'] = [int(grade == 'P') for grade in df_bar]
+    #df['race'] = [int(race == 7.0) for race in df['race']]
+    #a = df['race']
+    return df.to_numpy(), y.to_numpy()
+
+def german_load(path,dim, save_data=False):
+
+    data = []
+    target = []
+
+    indices = [0,2,3,5,6,8,9,11,13,14,16,18,19]
+    values = [4,4,10,5,5,5,3,4,3,3,4,2,2]
+
+    list_dict = []
+    for i in range(len(indices)):
+        enum=enumerate(['A'+str(indices[i]+1)+str(j) for j in range(values[i]+1)])
+        list_dict.append( dict((j,i) for i,j in enum))
+
+    with open(path) as fp:
+        line = fp.readline()
+        line = fp.readline()
+        while line:
+            temp = [i.strip() for i in line.strip().split(" ")]
+
+            target.append(float(temp[-1])-1)
+            
+            temp_data = [0.0]*dim
+            
+            #print(temp)
+
+            for i in range(len(temp[:-1])):
+
+                if i in indices:
+                    ind = indices.index(i)
+                    temp_data[i] =  list_dict[ind][temp[i]]
+                else:
+                    temp_data[i] = float(temp[i])
+            
+            data.append(temp_data)
+            line = fp.readline()
+    
+    X_data = np.array(data, dtype=np.float32)
+    Y_label = np.array(target)
+    
     if save_data:
         # Save the numpy files to the folder where they come from
         data_np_path = path + '.data.npy'
@@ -346,14 +411,139 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
 
         if isnumpy:
             fullset = (x_trn, y_trn)
-            #valset = (x_val, y_val)
-            #testset = (x_tst, y_tst)
+            
+        else:
+            fullset = CustomDataset(x_trn, y_trn)
+
+        return fullset, data_dims # valset, testset,
+
+    elif dset_name == 'LawSchool':
+
+        x_trn, y_trn = clean_lawschool_full(os.path.join(datadir, 'lawschool.csv'))
+
+        if isnumpy:
+            fullset = (x_trn, y_trn)
 
         else:
             fullset = CustomDataset(x_trn, y_trn)
-            #valset = CustomDataset(x_val, y_val)
-            #testset = CustomDataset(x_tst, y_tst)
+            
+        return fullset, x_trn.shape[1] 
+
+    elif dset_name == 'German_credit':
+
+        trn_file = os.path.join(datadir, 'german.data')
+
+        data_dims = 20
+
+        x_trn, y_trn = german_load(trn_file, dim=data_dims)
+
+        if isnumpy:
+            fullset = (x_trn, y_trn)
+
+        else:
+            fullset = CustomDataset(x_trn, y_trn)
+            
+        return fullset, data_dims
+
+def load_std_regress_data (datadir, dset_name,isnumpy=True):
+
+    if dset_name == "cadata":
+        trn_file = os.path.join(datadir, 'cadata.txt')
+        x_trn, y_trn  = libsvm_file_load(trn_file,8)
+    
+    elif dset_name == "abalone":
+        trn_file = os.path.join(datadir, 'abalone_scale.txt')
+        x_trn, y_trn  = libsvm_file_load(trn_file,8)
+
+    elif dset_name == "cpusmall":
+        trn_file = os.path.join(datadir, 'cpusmall_scale.txt')
+        x_trn, y_trn  = libsvm_file_load(trn_file,12)
+
+    elif dset_name == "housing":
+        trn_file = os.path.join(datadir, 'housing_scale.txt')
+        x_trn, y_trn  = libsvm_file_load(trn_file,13)
+
+    elif dset_name == "mg":
+        trn_file = os.path.join(datadir, 'mg_scale.txt')
+        x_trn, y_trn  = libsvm_file_load(trn_file,6)
+
+    elif dset_name == "census":
+        trn_file = os.path.join(datadir, 'adult.data')
+        tst_file = os.path.join(datadir, 'adult.test')
+
+        data_dims = 14
+
+        x_trn, y_trn = census_load(trn_file, dim=data_dims)
+        x_tst, y_tst = census_load(tst_file, dim=data_dims)
+
+        x_trn = np.concatenate((x_trn, x_tst), axis=0)
+        y_trn = np.concatenate((y_trn, y_tst), axis=0)
+
+    elif dset_name == "Community_Crime":
+        trn_file = os.path.join(datadir, 'communities.daa')
+
+        data_dims = 122
+
+        x_trn, y_trn = community_crime_load(trn_file, dim=data_dims)
+
+    elif dset_name == "synthetic":
+
+        data_dims = 30#100
+        samples = 300 #10000
+
+        np.random.seed(42)
+        
+        #avg = np.random.rand(data_dims)*5
+        #cov = np.diag(np.random.randint(50, size=data_dims))
+
+        avg = np.zeros(data_dims)
+        cov = np.identity(data_dims)
+
+        x_trn = np.random.multivariate_normal(avg, cov, samples)#.T
+        #print(x_trn.shape)
+
+        #w = np.random.normal(np.mean(avg), np.random.randint(50, size=1)[0], data_dims)
+        w = np.random.normal(0,25, data_dims) #0.25
+
+        sigma = 30#np.random.randint(50, size=1)[0]/50
+        #print(sigma)
+        #print(w)
+        
+        y_trn = x_trn.dot(w) + np.random.normal(0, sigma, samples)
+        #print(y_trn[:20])
+        #print(x_trn.dot(w)[:20])
+        #print((y_trn- x_trn.dot(w))[:20])
+
+    '''elif dset_name == "MSD":
+        trn_file = os.path.join(datadir, 'ablone_scle.txt')
+        x_trn, y_trn  = libsvm_file_load(trn_file,8)'''
+
+    x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.2, random_state=42)
+    x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.3, random_state=42)
+
+    sc = StandardScaler()
+    x_trn = sc.fit_transform(x_trn)
+    x_val = sc.transform(x_val)
+    x_tst = sc.transform(x_tst)
+
+    sc_l = StandardScaler()
+    y_trn = np.reshape(sc_l.fit_transform(np.reshape(y_trn,(-1,1))),(-1))
+    y_val = np.reshape(sc_l.fit_transform(np.reshape(y_val,(-1,1))),(-1))
+    y_tst = np.reshape(sc_l.fit_transform(np.reshape(y_tst,(-1,1))),(-1))
+
+    if isnumpy:
+        fullset = (x_trn, y_trn)
+        valset = (x_val, y_val)
+        testset = (x_tst, y_tst)
+
+    else:
+        fullset = CustomDataset(x_trn, y_trn)
+        valset = CustomDataset(x_val, y_val)
+        testset = CustomDataset(x_tst, y_tst)
+
+    return fullset, valset, testset
+
+    
 
 
-        return fullset, data_dims # valset, testset,
 

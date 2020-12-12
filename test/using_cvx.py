@@ -24,12 +24,17 @@ def regularizer(beta):
     return cp.pnorm(beta, p=2)**2
 
 def objective_fn(X, Y, beta, lambd):
-    return loss_fn(X, Y, beta) + lambd*len(X) * regularizer(beta)
+    return loss_fn(X, Y, beta) + lambd*regularizer(beta) #*len(X)
 
 def mse(X, Y, beta):
     #print(X.shape)
     #print(loss_fn(X, Y, beta))
     return (1.0 / X.shape[0]) * loss_fn(X, Y, beta)#.value
+
+def mse_value(X, Y, beta):
+    #print(X.shape)
+    #print(loss_fn(X, Y, beta))
+    return (1.0 / X.shape[0]) * loss_fn(X, Y, beta).value
 
 """def generate_data(m=100, n=20, sigma=5):
     "Generates data matrix X and observations Y."
@@ -73,8 +78,10 @@ reg_lambda = float(sys.argv[6])'''
 
 fraction = 1
 #data_name = 'Community_Crime'
-data_name = 'OnlineNewsPopularity'
+#data_name = 'OnlineNewsPopularity'
 #data_name = 'census'
+#data_name = 'LawSchool'
+data_name = "German_credit"
 reg_lambda = 0.01
 
 datadir = '../../Datasets/data/'+data_name+"/"
@@ -90,8 +97,11 @@ else:
 
 x_trn, y_trn = x_trn.astype(np.float32), y_trn.astype(np.float32) #np.delete(fullset[0],protect_feature, axis=1)
 
-sc = StandardScaler()
+#sc = StandardScaler()
 #x_trn = sc.fit_transform(x_trn)
+
+rescale = np.linalg.norm(x_trn)
+x_trn = x_trn/rescale
 
 for i in range(len(x_val_list)):
     '''if data_name == 'OnlineNewsPopularity':
@@ -99,8 +109,10 @@ for i in range(len(x_val_list)):
         x_tst_list[i] = x_tst_list[i].astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
 
     else:'''
-    x_val_list[i] = x_val_list[i].numpy().astype(np.float32)#sc.transform(x_val_list[i].numpy().astype(np.float32))
-    x_tst_list[i] = x_tst_list[i].numpy().astype(np.float32)#sc.transform(x_tst_list[i].numpy().astype(np.float32))
+    x_val_list[i] = x_val_list[i].numpy().astype(np.float32)/rescale
+    #sc.transform(x_val_list[i].numpy().astype(np.float32))
+    x_tst_list[i] = x_tst_list[i].numpy().astype(np.float32)/rescale
+    #sc.transform(x_tst_list[i].numpy().astype(np.float32))
     
     y_tst_list[i] = y_tst_list[i].numpy().astype(np.float32)
     y_val_list[i] = y_val_list[i].numpy().astype(np.float32)
@@ -108,27 +120,73 @@ for i in range(len(x_val_list)):
 #print(x_trn[0])
 #print(y_trn[0])
 
-x_trn = x_trn/np.linalg.norm(x_trn)
-
 beta = cp.Variable(x_trn.shape[1])
 lambd = cp.Parameter(nonneg=True)
 objective = cp.Minimize(objective_fn(x_trn, y_trn, beta, lambd))
 
 #objective = cp.Minimize(cp.sum_squares(x_trn @ beta - y_trn) + lambd *cp.pnorm(beta, p=2)**2)
 
-constraints = []
-"""for i in range(len(x_val_list)):
-    constraints = constraints + [mse(x_val_list[i], y_val_list[i], beta) <= 0.1]
-    #constraints = constraints + [cp.sum_squares(x_val_list[i] @ beta - y_val_list[i]) <= 0.1]"""
+#deltas =[0.1]*len(x_val_list)
+#deltas = [0.1026,0.1655,0.2442,0.1305,0.2651]
 
-prob = cp.Problem(objective, constraints)
+all_logs_dir = './results/CVX' 
+print(all_logs_dir)
+subprocess.run(["mkdir", "-p", all_logs_dir])
+path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
+logfile = open(path_logfile, 'w')
 
-lambd.value = reg_lambda
-# The optimal objective value is returned by `prob.solve()`.
-result = prob.solve(verbose=True)
+for dl in [1,0.7,0.6,0.5,0.4,0.35,0.3,0.2,0.1,0.05,0.04,0.03]:
+#[1,0.5,0.45,0.40,0.35,0.3,0.25,0.2,0.15,0.1,0.05,0.04,0.03,0.02,0.01]:
+#[1,0.2651,0.25,0.22,0.21,0.2]:
 
-print(beta.value)
-# The optimal Lagrange multiplier for a constraint is stored in
-# `constraint.dual_value`.
-#print(constraints[0].dual_value)
+    deltas =[dl]*len(x_val_list)
+    constraints = []
+    for i in range(len(x_val_list)):
+        constraints = constraints + [mse(x_val_list[i], y_val_list[i], beta) <= deltas[i]]
+        #constraints = constraints + [cp.sum_squares(x_val_list[i] @ beta - y_val_list[i]) <= 0.1]"""
+
+
+    prob = cp.Problem(objective, constraints)
+
+    lambd.value = reg_lambda
+    # The optimal objective value is returned by `prob.solve()`.
+    result = prob.solve()#verbose=True)
+
+    #print(beta.value)
+    # The optimal Lagrange multiplier for a constraint is stored in
+    # `constraint.dual_value`.
+    val_error =[]
+    tst_error =[]
+    for i in range(len(x_val_list)):
+        val_error.append(mse_value(x_val_list[i], y_val_list[i], beta))
+        tst_error.append(mse_value(x_tst_list[i], y_tst_list[i], beta))
+
+    
+    #print("Delta",end=" ")
+    print("{0:.3f}".format(dl),end="\t")
+    
+    #print("Test",end=" ")
+    print("{0:.3f}".format(sum(tst_error)),end="\t")
+    #for i in range(len(x_val_list)):
+    #    print(tst_error[i],end="\t")
+
+    #print("Validation",end=" ")
+    print("{0:.3f}".format(sum(val_error)),end="\t")
+    #for i in range(len(x_val_list)):
+    #    print(val_error[i],end="\t")
+
+
+    print("{0:.3f}".format(objective.value),"\t","{0:.3f}".format(loss_fn(x_trn, y_trn, beta).value),\
+        "\t","{0:.3f}".format(reg_lambda*regularizer(beta).value)) #*len(x_trn)*
+    #for con in constraints:
+    #   print(con.dual_value)
+
+    print("Delta and training error:",dl,mse_value(x_trn, y_trn, beta),file=logfile)
+
+    print("Validation and test error:",file=logfile)
+    for i in range(len(x_val_list)):
+        print(mse_value(x_val_list[i], y_val_list[i], beta), \
+            mse_value(x_tst_list[i], y_tst_list[i], beta),file=logfile)
+        
+
 

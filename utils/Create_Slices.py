@@ -128,6 +128,7 @@ def get_slices(data_name, data,labels,device,buckets=None):
         final_lables = [j for sub in data_class for j in sub]
         left = list(total_set)    
         data_left = data[left]
+        label_left = labels[left]
 
     elif data_name == 'OnlineNewsPopularity':
 
@@ -183,11 +184,17 @@ def get_slices(data_name, data,labels,device,buckets=None):
             if curr_N < N:
                 count += (N - curr_N)
 
-            val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
+            '''val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
             val_label_slices.append(torch.from_numpy(labels[indices]).float().to(device))
 
             tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
-            tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
+            tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))'''
+
+            val_data_slices.append(data[indices])
+            val_label_slices.append(labels[indices])
+
+            tst_data_slices.append(data[indices_tst])
+            tst_label_slices.append(labels[indices_tst])
 
             
         idx = (data[:,max_id] == 1.0).nonzero()[0].flatten()
@@ -203,28 +210,46 @@ def get_slices(data_name, data,labels,device,buckets=None):
         indices_tst = list(np.random.choice(idx, size=N+count, replace=False)) 
         total_set.difference(indices_tst)
 
-        val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
+        '''val_data_slices.append(torch.from_numpy(data[indices]).float().to(device))
         val_label_slices.append(torch.from_numpy(labels[indices]).float().to(device))
 
         tst_data_slices.append(torch.from_numpy(data[indices_tst]).float().to(device))
-        tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))
+        tst_label_slices.append(torch.from_numpy(labels[indices_tst]).float().to(device))'''
+
+        val_data_slices.append(data[indices])
+        val_label_slices.append(labels[indices])
+
+        tst_data_slices.append(data[indices_tst])
+        tst_label_slices.append(labels[indices_tst])
 
         left = list(total_set)
         sc = MinMaxScaler() #StandardScaler()
+        sc_l = MinMaxScaler()
 
-        print(data[left][0])
+        #print(data[left][0])
         data_left = sc.fit_transform(data[left])
-        print(data_left[0])
+        label_left = np.reshape(sc_l.fit_transform(np.reshape(labels[left],(-1,1))),(-1))
+        #print(data_left[0])
         #preprocessing.normalize(data[left])
 
         for j in range(len(val_data_slices)):
             
             val_data_slices[j] = torch.from_numpy(sc.transform(val_data_slices[j])).float().to(device)
             tst_data_slices[j] = torch.from_numpy(sc.transform(tst_data_slices[j])).float().to(device)
-    
-    elif data_name == 'census':
 
-        protect_feature = 8 #9
+            val_label_slices[j] = torch.from_numpy(np.reshape(\
+                sc_l.transform(np.reshape(val_label_slices[j],(-1,1))),(-1))).float().to(device)
+            tst_label_slices[j] = torch.from_numpy(np.reshape(\
+                sc_l.transform(np.reshape(tst_label_slices[j],(-1,1))),(-1))).float().to(device)
+    
+    elif data_name in ['census','LawSchool','German_credit']:
+
+        if data_name == 'census':
+            protect_feature = 8 #9
+        elif data_name == 'LawSchool':
+            protect_feature = 0
+        elif data_name == 'German_credit':
+            protect_feature = 8
 
         total_set = set(list(np.arange(len(data))))
         
@@ -292,7 +317,8 @@ def get_slices(data_name, data,labels,device,buckets=None):
 
         final_lables = classes
         left = list(total_set)
-        data_left = preprocessing.normalize(data[left])
+        data_left = data[left] #preprocessing.normalize(data[left]) 
+        label_left = labels[left]
         
-    return data_left, labels[left], val_data_slices, val_label_slices, final_lables, tst_data_slices,\
+    return data_left, label_left, val_data_slices, val_label_slices, final_lables, tst_data_slices,\
         tst_label_slices,final_lables

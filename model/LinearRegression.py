@@ -20,14 +20,14 @@ class RegressionNet(nn.Module):
     #    return self.feature_dim
 
 class LogisticNet(nn.Module):
-    def __init__(self, input_dim,num_cls):
+    def __init__(self, input_dim):#,num_cls):
         super(LogisticNet, self).__init__()
-        self.linear = nn.Linear(input_dim,num_cls)
+        self.linear = nn.Linear(input_dim,1)
         #self.feature_dim = input_dim
     
     def forward(self, x, last=False):
         scores = self.linear(x)
-        #scores = torch.sigmoid(self.linear(x))
+        scores = torch.sigmoid(self.linear(x).view(-1))
         return scores
 
 class DualNet(nn.Module):

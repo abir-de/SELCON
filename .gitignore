@@ -2,3 +2,4 @@ build
 results
 .vscode
 utils/__pycache__
+model/__pycache__
