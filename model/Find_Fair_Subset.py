@@ -7,14 +7,14 @@ import copy
 
 
 class FindSubset(object):
-    def __init__(self, x_trn, y_trn, x_val_list, y_val_list,model,loss,val_size,device,delta,lr):
+    def __init__(self, x_trn, y_trn, x_val, y_val,model,optimizer,loss,device,delta,lr,lam):
         
         self.x_trn = x_trn
         self.y_trn = y_trn
         #self.trn_batch = trn_batch
 
-        self.x_val_list = x_val_list
-        self.y_val_list = y_val_list
+        self.x_val = x_val
+        self.y_val = y_val
 
         self.model = model
         self.criterion = loss 
@@ -22,58 +22,188 @@ class FindSubset(object):
 
         self.delta = delta
         self.lr = lr
-        self.val_size = val_size
+        self.lam = lam
+        self.optimizer = optimizer
 
     def precompute(self,f_pi_epoch,p_epoch):
 
-        self.F_phi = 0
-
         #self.model.load_state_dict(theta_init)
 
-        alphas = torch.ones_like(self.val_size,requires_grad=True)
-        
-        main_optimizer = torch.optim.Adam([{'params': alphas,'lr':self.lr*10}], lr=self.lr)
-        #{'params': self.model.parameters()},
+        alphas = torch.rand_like(self.delta,requires_grad=True) 
+
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[10,20,40,100],\
+            gamma=0.5) #[e*2 for e in change]
 
         alphas.requires_grad = False
 
+        #Compute F_phi
         for i in range(f_pi_epoch):
             
-            alpha_extend = torch.repeat_interleave(alphas,val_size, dim=0)
+            self.optimizer.zero_grad()
+            l2_reg = 0
 
-
-
-            val_scores = self.model(self.x_val_list)
-            constraint = self.criterion(val_scores, self.y_val_list) - self.delta
-            multiplier = torch.dot(alpha_extend,constraint)
-
-            loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(idxs) + multiplier
-            loss.backward()
-            main_optimizer.step()
-
-            if i % print_every == 0:  # Print Training and Validation Loss
-                print('Epoch:', i + 1, 'SubsetTrn', loss.item())
+            for param in self.model.parameters():
+                l2_reg += torch.norm(param)
             
-            for param in self.main_model.parameters():
+            scores_val = self.model(self.x_val)
+            constraint = self.criterion(scores_val, self.y_val)
+            multiplier = torch.dot(alphas,constraint)
+
+            loss = multiplier
+            self.F_phi = loss.item()
+            loss.backward()
+            
+            self.optimizer.step()
+            scheduler.step()
+            
+            for param in self.model.parameters():
                 param.requires_grad = False
             alphas.requires_grad = True
 
-            #print(main_optimizer.param_groups)
-
-            val_scores = self.model(self.x_val_list)
-            constraint = self.criterion(val_scores, self.y_val_list) - self.delta
-            multiplier = torch.dot(alpha_extend,-1.0*constraint)
+            scores_val = self.model(self.x_val)
+            constraint = self.criterion(scores_val, self.y_val)
+            multiplier = torch.dot(-1.0*alphas,constraint)
             
-            main_optimizer.zero_grad()
             multiplier.backward()
-            main_optimizer.step()
+            
+            self.optimizer.step()
 
             alphas.requires_grad = False
             alphas.clamp_(min=0.0)
+            #print(alphas)
 
-            for param in main_model.parameters():
+            for param in self.model.parameters():
                 param.requires_grad = True
 
+        self.F_values = torch.zeros(len(self.x_trn))
+        alphas_orig = copy.deepcopy(alphas)
+        cached_state_dict = copy.deepcopy(self.model.state_dict())
+
+        for trn_id in range(len(self.x_trn)):
+            alphas = copy.deepcopy(alphas_orig)
+            self.model.load_state_dict(cached_state_dict)
+
+            for i in range(p_epoch):
+                
+                inputs, targets = self.x_trn[trn_id], self.y_trn[trn_id]
+                self.optimizer.zero_grad()
+                l2_reg = 0
+                
+                scores = self.model(inputs)
+                for param in self.model.parameters():
+                    l2_reg += torch.norm(param)
+                
+                scores_val = self.model(self.x_val)
+                constraint = self.criterion(scores_val, self.y_val)
+                multiplier = torch.dot(alphas,constraint)
+
+                loss = self.criterion(scores, targets) +  self.lam*l2_reg + multiplier
+                self.F_values[trn_id] = loss.item()
+                loss.backward()
+                
+                self.optimizer.step()
+                scheduler.step()
+
+                for param in self.model.parameters():
+                    param.requires_grad = False
+                alphas.requires_grad = True
+
+                scores_val = self.model(self.x_val)
+                constraint = self.criterion(scores_val, self.y_val)
+                multiplier = torch.dot(-1.0*alphas,constraint)
+                
+                multiplier.backward()
+                
+                self.optimizer.step()
+
+                alphas.requires_grad = False
+                alphas.clamp_(min=0.0)
+                #print(alphas)
+
+                for param in self.model.parameters():
+                    param.requires_grad = True
 
 
-    #def return_subset(self,curr_subset,):
+    def return_subset(self,theta_init,p_epoch,curr_subset,alphas,budget):
+
+        m_values = self.F_values #torch.zeros(len(self.x_trn))
+        
+        self.model.load_state_dict(theta_init)
+
+        with torch.no_grad():
+
+            inputs, targets = self.x_trn[curr_subset], self.y_trn[curr_subset]
+            self.optimizer.zero_grad()
+            l2_reg = 0
+            
+            scores = self.model(inputs)
+            for param in self.model.parameters():
+                l2_reg += torch.norm(param)
+            
+            scores_val = self.model(self.x_val)
+            constraint = self.criterion(scores_val, self.y_val)
+            multiplier = torch.dot(alphas,constraint)
+
+            F_curr = (self.criterion(scores, targets) +  self.lam*l2_reg + multiplier).item()
+
+        alphas_orig = copy.deepcopy(alphas)
+        cached_state_dict = copy.deepcopy(self.model.state_dict())
+
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[10,20,40,100],\
+            gamma=0.5) #[e*2 for e in change]
+
+        alphas.requires_grad = False
+        
+        for sub_id in curr_subset:
+            removed = curr_subset
+            removed.remove(sub_id)
+
+            alphas = copy.deepcopy(alphas_orig)
+            self.model.load_state_dict(cached_state_dict)
+
+            for i in range(p_epoch):
+                
+                inputs, targets = self.x_trn[removed], self.y_trn[removed]
+                self.optimizer.zero_grad()
+                l2_reg = 0
+                
+                scores = self.model(inputs)
+                for param in self.model.parameters():
+                    l2_reg += torch.norm(param)
+                
+                scores_val = self.model(self.x_val)
+                constraint = self.criterion(scores_val, self.y_val)
+                multiplier = torch.dot(alphas,constraint)
+
+                loss = self.criterion(scores, targets) +  self.lam*l2_reg + multiplier
+                m_values[sub_id] = F_curr - loss.item()
+                loss.backward()
+                
+                self.optimizer.step()
+                scheduler.step()
+
+                for param in self.model.parameters():
+                    param.requires_grad = False
+                alphas.requires_grad = True
+
+                scores_val = self.model(self.x_val)
+                constraint = self.criterion(scores_val, self.y_val)
+                multiplier = torch.dot(-1.0*alphas,constraint)
+                
+                multiplier.backward()
+                
+                self.optimizer.step()
+
+                alphas.requires_grad = False
+                alphas.clamp_(min=0.0)
+                #print(alphas)
+
+                for param in self.model.parameters():
+                    param.requires_grad = True
+
+        values,indices =m_values.topk(budget,largest=False)
+
+        return indices
+
+
+        

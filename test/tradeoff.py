@@ -48,8 +48,8 @@ fraction = 1
 #data_name = "German_credit"
 #data_name = 'cadata'
 #data_name = 'abalone'
-#data_name = 'cpusmall'
-data_name = "synthetic"
+data_name = 'cpusmall'
+#data_name = "synthetic"
 #data_name = 'housing'
 #data_name = "mg"
 reg_lambda = 0.1
@@ -98,10 +98,10 @@ x_trn, y_trn = x_trn.astype(np.float32), y_trn.astype(np.float32) #np.delete(ful
 #sc = StandardScaler()
 #x_trn = sc.fit_transform(x_trn)
 
-rescale = np.linalg.norm(x_trn)
-x_trn = x_trn/rescale
-x_val = x_val/rescale
-x_tst = x_tst/rescale
+#rescale = np.linalg.norm(x_trn)
+#x_trn = x_trn/rescale
+#_val = x_val/rescale
+#x_tst = x_tst/rescale
 
 
 beta = cp.Variable(x_trn.shape[1])
@@ -121,10 +121,10 @@ lamda = np.concatenate((np.zeros(1),np.logspace(-8,4,num=13,base=10), np.logspac
 lamda.sort()
 #print(lamda)
 
-#deltas = [i/100 for i in range(99,3,-3)]
-#deltas.insert(0,1)
+deltas = [i/100 for i in range(99,3,-3)]
+deltas.insert(0,1)
 #deltas = [i/100 for i in range(5,0,-1)] #deltas + [i/100 for i in range(5,0,-1)]
-deltas = [i/1000 for i in range(55,30,-5)]
+#deltas = [i/1000 for i in range(55,30,-5)]
 
 #deltas = [i/100 for i in range(24,3,-3)]
 
