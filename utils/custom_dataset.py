@@ -489,7 +489,7 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
     elif dset_name == "synthetic":
 
         data_dims = 30#100
-        samples = 300 #10000
+        samples = 5000 #10000
 
         np.random.seed(42)
         
@@ -503,7 +503,7 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
         #print(x_trn.shape)
 
         #w = np.random.normal(np.mean(avg), np.random.randint(50, size=1)[0], data_dims)
-        w = np.random.normal(0,25, data_dims) #0.25
+        w = np.random.normal(0,10, data_dims) #0.25
 
         sigma = 30#np.random.randint(50, size=1)[0]/50
         #print(sigma)
@@ -518,8 +518,8 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
         trn_file = os.path.join(datadir, 'ablone_scle.txt')
         x_trn, y_trn  = libsvm_file_load(trn_file,8)'''
 
-    x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.2, random_state=42)
-    x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.3, random_state=42)
+    x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.15, random_state=42)
+    x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.2, random_state=42)
 
     sc = StandardScaler()
     x_trn = sc.fit_transform(x_trn)

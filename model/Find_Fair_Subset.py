@@ -29,10 +29,11 @@ class FindSubset(object):
 
         #self.model.load_state_dict(theta_init)
 
+        print("starting Pre compute")
         alphas = torch.rand_like(self.delta,requires_grad=True) 
 
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[10,20,40,100],\
-            gamma=0.5) #[e*2 for e in change]
+        #scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[10,20,40,100],\
+        #    gamma=0.5) #[e*2 for e in change]
 
         alphas.requires_grad = False
 
@@ -47,14 +48,14 @@ class FindSubset(object):
             
             scores_val = self.model(self.x_val)
             constraint = self.criterion(scores_val, self.y_val)
-            multiplier = torch.dot(alphas,constraint)
+            multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
             loss = multiplier
             self.F_phi = loss.item()
             loss.backward()
             
             self.optimizer.step()
-            scheduler.step()
+            #scheduler.step()
             
             for param in self.model.parameters():
                 param.requires_grad = False
@@ -62,7 +63,7 @@ class FindSubset(object):
 
             scores_val = self.model(self.x_val)
             constraint = self.criterion(scores_val, self.y_val)
-            multiplier = torch.dot(-1.0*alphas,constraint)
+            multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
             
             multiplier.backward()
             
@@ -75,6 +76,8 @@ class FindSubset(object):
             for param in self.model.parameters():
                 param.requires_grad = True
 
+        print("Finishing F phi")
+
         self.F_values = torch.zeros(len(self.x_trn))
         alphas_orig = copy.deepcopy(alphas)
         cached_state_dict = copy.deepcopy(self.model.state_dict())
@@ -85,7 +88,7 @@ class FindSubset(object):
 
             for i in range(p_epoch):
                 
-                inputs, targets = self.x_trn[trn_id], self.y_trn[trn_id]
+                inputs, targets = self.x_trn[trn_id], self.y_trn[trn_id].view(-1)
                 self.optimizer.zero_grad()
                 l2_reg = 0
                 
@@ -95,14 +98,16 @@ class FindSubset(object):
                 
                 scores_val = self.model(self.x_val)
                 constraint = self.criterion(scores_val, self.y_val)
-                multiplier = torch.dot(alphas,constraint)
+                multiplier = alphas*constraint #torch.dot(alphas,constraint)
+
+                #print(scores,targets)
 
                 loss = self.criterion(scores, targets) +  self.lam*l2_reg + multiplier
                 self.F_values[trn_id] = loss.item()
                 loss.backward()
                 
                 self.optimizer.step()
-                scheduler.step()
+                #scheduler.step()
 
                 for param in self.model.parameters():
                     param.requires_grad = False
@@ -110,7 +115,7 @@ class FindSubset(object):
 
                 scores_val = self.model(self.x_val)
                 constraint = self.criterion(scores_val, self.y_val)
-                multiplier = torch.dot(-1.0*alphas,constraint)
+                multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
                 
                 multiplier.backward()
                 
@@ -123,10 +128,12 @@ class FindSubset(object):
                 for param in self.model.parameters():
                     param.requires_grad = True
 
+        print("Finishing Element wise F")
+
 
     def return_subset(self,theta_init,p_epoch,curr_subset,alphas,budget):
 
-        m_values = self.F_values #torch.zeros(len(self.x_trn))
+        m_values = copy.deepcopy(self.F_values) #torch.zeros(len(self.x_trn))
         
         self.model.load_state_dict(theta_init)
 
@@ -142,20 +149,20 @@ class FindSubset(object):
             
             scores_val = self.model(self.x_val)
             constraint = self.criterion(scores_val, self.y_val)
-            multiplier = torch.dot(alphas,constraint)
+            multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
             F_curr = (self.criterion(scores, targets) +  self.lam*l2_reg + multiplier).item()
 
         alphas_orig = copy.deepcopy(alphas)
         cached_state_dict = copy.deepcopy(self.model.state_dict())
 
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[10,20,40,100],\
-            gamma=0.5) #[e*2 for e in change]
+        #scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[10,20,40,100],\
+        #    gamma=0.5) #[e*2 for e in change]
 
         alphas.requires_grad = False
         
         for sub_id in curr_subset:
-            removed = curr_subset
+            removed = copy.deepcopy(curr_subset)
             removed.remove(sub_id)
 
             alphas = copy.deepcopy(alphas_orig)
@@ -173,14 +180,14 @@ class FindSubset(object):
                 
                 scores_val = self.model(self.x_val)
                 constraint = self.criterion(scores_val, self.y_val)
-                multiplier = torch.dot(alphas,constraint)
+                multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
                 loss = self.criterion(scores, targets) +  self.lam*l2_reg + multiplier
                 m_values[sub_id] = F_curr - loss.item()
                 loss.backward()
                 
                 self.optimizer.step()
-                scheduler.step()
+                #scheduler.step()
 
                 for param in self.model.parameters():
                     param.requires_grad = False
@@ -188,7 +195,7 @@ class FindSubset(object):
 
                 scores_val = self.model(self.x_val)
                 constraint = self.criterion(scores_val, self.y_val)
-                multiplier = torch.dot(-1.0*alphas,constraint)
+                multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
                 
                 multiplier.backward()
                 
@@ -203,7 +210,7 @@ class FindSubset(object):
 
         values,indices =m_values.topk(budget,largest=False)
 
-        return indices
+        return list(indices.cpu())
 
 
         
