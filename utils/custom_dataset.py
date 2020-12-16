@@ -24,7 +24,7 @@ class CustomDataset(Dataset):
             self.data = torch.from_numpy(data.astype('float32'))#.to(device)
             self.targets = torch.from_numpy(target)#.to(device)
         else:
-            self.data = data.astype('float32')
+            self.data = data#.astype('float32')
             self.targets = target
 
     def __len__(self):
@@ -489,7 +489,7 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
     elif dset_name == "synthetic":
 
         data_dims = 30#100
-        samples = 5000 #10000
+        samples = 5000
 
         np.random.seed(42)
         

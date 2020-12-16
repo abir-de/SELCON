@@ -47,7 +47,7 @@ class FindSubset(object):
                 l2_reg += torch.norm(param)
             
             scores_val = self.model(self.x_val)
-            constraint = self.criterion(scores_val, self.y_val)
+            constraint = self.criterion(scores_val, self.y_val) - self.delta
             multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
             loss = multiplier
@@ -62,7 +62,7 @@ class FindSubset(object):
             alphas.requires_grad = True
 
             scores_val = self.model(self.x_val)
-            constraint = self.criterion(scores_val, self.y_val)
+            constraint = self.criterion(scores_val, self.y_val) - self.delta
             multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
             
             multiplier.backward()
@@ -97,7 +97,7 @@ class FindSubset(object):
                     l2_reg += torch.norm(param)
                 
                 scores_val = self.model(self.x_val)
-                constraint = self.criterion(scores_val, self.y_val)
+                constraint = self.criterion(scores_val, self.y_val) - self.delta
                 multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
                 #print(scores,targets)
@@ -114,7 +114,7 @@ class FindSubset(object):
                 alphas.requires_grad = True
 
                 scores_val = self.model(self.x_val)
-                constraint = self.criterion(scores_val, self.y_val)
+                constraint = self.criterion(scores_val, self.y_val) - self.delta
                 multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
                 
                 multiplier.backward()
@@ -148,7 +148,7 @@ class FindSubset(object):
                 l2_reg += torch.norm(param)
             
             scores_val = self.model(self.x_val)
-            constraint = self.criterion(scores_val, self.y_val)
+            constraint = self.criterion(scores_val, self.y_val) - self.delta
             multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
             F_curr = (self.criterion(scores, targets) +  self.lam*l2_reg + multiplier).item()
@@ -179,7 +179,7 @@ class FindSubset(object):
                     l2_reg += torch.norm(param)
                 
                 scores_val = self.model(self.x_val)
-                constraint = self.criterion(scores_val, self.y_val)
+                constraint = self.criterion(scores_val, self.y_val) - self.delta
                 multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
                 loss = self.criterion(scores, targets) +  self.lam*l2_reg + multiplier
@@ -194,7 +194,7 @@ class FindSubset(object):
                 alphas.requires_grad = True
 
                 scores_val = self.model(self.x_val)
-                constraint = self.criterion(scores_val, self.y_val)
+                constraint = self.criterion(scores_val, self.y_val) - self.delta
                 multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
                 
                 multiplier.backward()

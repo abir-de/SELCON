@@ -10,10 +10,12 @@ import torch.nn as nn
 import torch.optim as optim
 
 from sklearn.model_selection import train_test_split
-from utils.custom_dataset import load_std_regress_data  #load_dataset_custom
+from utils.custom_dataset import load_std_regress_data,CustomDataset  #load_dataset_custom
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
 from model.Find_Fair_Subset import FindSubset
+
+from torch.utils.data import DataLoader
 
 import math
 import random
@@ -53,8 +55,21 @@ batch_size = 12000
 learning_rate = 0.001 #0.05 
 #change = [250,650,1250,1950,4000]#,4200]
 
-all_logs_dir = './results/LR/' + data_name + '/' + str(fraction) + '/' +str(delt) + '/' +\
-     str(select_every)
+fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
+
+x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
+     torch.from_numpy(fullset[1]).float().to(device)
+x_tst, y_tst = torch.from_numpy(testset[0]).float().to(device),\
+     torch.from_numpy(testset[1]).float().to(device) 
+x_val, y_val = torch.from_numpy(valset[0]).float().to(device),\
+     torch.from_numpy(valset[1]).float().to(device) 
+
+if data_name == "synthetic":
+    all_logs_dir = './results/Whole/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
+        '/' +str(delt) + '/' +str(select_every)
+else:
+    all_logs_dir = './results/Whole/' + data_name+'/' + str(fraction) +\
+        '/' +str(delt) + '/' +str(select_every)
 print(all_logs_dir)
 subprocess.run(["mkdir", "-p", all_logs_dir])
 path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
@@ -107,18 +122,11 @@ elif data_name == 'German_credit':
 
 #change = [50,100,200,550]
 
-fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
-
-x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
-     torch.from_numpy(fullset[1]).float().to(device)
-x_tst, y_tst = torch.from_numpy(testset[0]).float().to(device),\
-     torch.from_numpy(testset[1]).float().to(device) 
-x_val, y_val = torch.from_numpy(valset[0]).float().to(device),\
-     torch.from_numpy(valset[1]).float().to(device) 
-
 N, M = x_trn.shape
 bud = int(fraction * N)
 print("Budget, fraction and N:", bud, fraction, N)#,valset[0].shape)
+
+train_batch_size = min(bud,1000)
 
 print_every = 50
 
@@ -147,22 +155,36 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
     elif func_name == 'Random with Prior':
         print("Starting Random with Prior Run!")
 
+    idxs.sort()
+    np.random.seed(42)
+    np_sub_idxs = np.array(idxs)
+    np.random.shuffle(np_sub_idxs)
+    loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
+            transform=None),shuffle=False,batch_size=train_batch_size)
+
     for i in range(num_epochs):
         
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
-        inputs, targets = x_trn[idxs], y_trn[idxs]
-        main_optimizer.zero_grad()
-        l2_reg = 0
-        
-        scores = main_model(inputs)
-        for param in main_model.parameters():
-            l2_reg += torch.norm(param)
-        
-        loss = criterion(scores, targets) +  reg_lambda*l2_reg *len(idxs)
-        loss.backward()
+        #inputs, targets = x_trn[idxs], y_trn[idxs]
 
-        main_optimizer.step()
-        #scheduler.step()
+        for batch_idx in list(loader_tr.batch_sampler):
+            
+            inputs, targets = loader_tr.dataset[batch_idx]
+            main_optimizer.zero_grad()
+            l2_reg = 0
+            
+            scores = main_model(inputs)
+            for param in main_model.parameters():
+                l2_reg += torch.norm(param)
+            
+            loss = criterion(scores, targets) +  reg_lambda*l2_reg *len(idxs)
+            loss.backward()
+
+            for p in filter(lambda p: p.grad is not None, main_model.parameters()):\
+                 p.grad.data.clamp_(min=-.1, max=.1)
+
+            main_optimizer.step()
+            #scheduler.step()
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
@@ -230,69 +252,85 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         main_model.load_state_dict(cached_state_dict)'''
         
         print("Starting Subset of size ",fraction," with fairness Run!")
+
+    sub_idxs.sort()
+    np.random.seed(42)
+    np_sub_idxs = np.array(sub_idxs)
+    np.random.shuffle(np_sub_idxs)
+    loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
+            transform=None),shuffle=False,batch_size=train_batch_size)
     
     for i in range(num_epochs):
 
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
-        inputs, targets = x_trn[sub_idxs], y_trn[sub_idxs]
-        main_optimizer.zero_grad()
-        l2_reg = 0
-        
-        scores = main_model(inputs)
-        for param in main_model.parameters():
-            l2_reg += torch.norm(param)
-        
-        '''alpha_extend = torch.repeat_interleave(alphas,val_size, dim=0)
-        val_scores = main_model(x_val_combined)
-        constraint = criterion(val_scores, y_val_combined) - delta_extend
-        multiplier = torch.dot(alpha_extend,constraint)'''
+        #inputs, targets = x_trn[sub_idxs], y_trn[sub_idxs]
 
-        '''constraint = torch.zeros(len(x_val_list))
-        for j in range(len(x_val_list)):
+        for batch_idx in list(loader_tr.batch_sampler):
             
-            inputs_j, targets_j = x_val_list[j], y_val_list[j]
-            scores_j = main_model(inputs_j)
-            constraint[j] = criterion(scores_j, targets_j) - deltas[j]'''
+            inputs, targets = loader_tr.dataset[batch_idx]
 
-        scores_val = main_model(x_val)
-        constraint = criterion(scores_val, y_val)
-        multiplier = alphas*constraint#torch.dot(alphas,constraint)
+            main_optimizer.zero_grad()
+            l2_reg = 0
+            
+            scores = main_model(inputs)
+            for param in main_model.parameters():
+                l2_reg += torch.norm(param)
+            
+            '''alpha_extend = torch.repeat_interleave(alphas,val_size, dim=0)
+            val_scores = main_model(x_val_combined)
+            constraint = criterion(val_scores, y_val_combined) - delta_extend
+            multiplier = torch.dot(alpha_extend,constraint)'''
 
-        loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(sub_idxs) + multiplier
-        loss.backward()
-        
-        main_optimizer.step()
-        #scheduler.step()
-        #main_optimizer.param_groups[1]['lr'] = learning_rate/2
+            '''constraint = torch.zeros(len(x_val_list))
+            for j in range(len(x_val_list)):
+                
+                inputs_j, targets_j = x_val_list[j], y_val_list[j]
+                scores_j = main_model(inputs_j)
+                constraint[j] = criterion(scores_j, targets_j) - deltas[j]'''
+
+            scores_val = main_model(x_val)
+            constraint = criterion(scores_val, y_val) - deltas
+            multiplier = alphas*constraint#torch.dot(alphas,constraint)
+
+            loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(sub_idxs) + multiplier
+            loss.backward()
+
+            # clamp gradients, just in case
+            for p in filter(lambda p: p.grad is not None, main_model.parameters()):\
+                 p.grad.data.clamp_(min=-.1, max=.1)
+
+            main_optimizer.step()
+            #scheduler.step()
+            #main_optimizer.param_groups[1]['lr'] = learning_rate/2
+            
+            for param in main_model.parameters():
+                param.requires_grad = False
+            alphas.requires_grad = True
+
+            scores_val = main_model(x_val)
+            constraint = criterion(scores_val, y_val)
+            multiplier = -1.0*alphas*constraint#torch.dot(-1.0*alphas ,constraint)
+
+            #print(alphas,constraint)
+            
+            #main_optimizer.zero_grad()
+            multiplier.backward()
+            
+            main_optimizer.step()
+            #scheduler.step()
+
+            alphas.requires_grad = False
+            alphas.clamp_(min=0.0)
+            #print(alphas)
+
+            for param in main_model.parameters():
+                param.requires_grad = True
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
             #print(alphas,constraint)
             #print(criterion(scores, targets) , reg_lambda*l2_reg*len(idxs) ,multiplier)
             #print(main_optimizer.param_groups)#[0]['lr'])
-        
-        for param in main_model.parameters():
-            param.requires_grad = False
-        alphas.requires_grad = True
-
-        scores_val = main_model(x_val)
-        constraint = criterion(scores_val, y_val)
-        multiplier = -1.0*alphas*constraint#torch.dot(-1.0*alphas ,constraint)
-
-        #print(alphas,constraint)
-        
-        #main_optimizer.zero_grad()
-        multiplier.backward()
-        
-        main_optimizer.step()
-        #scheduler.step()
-
-        alphas.requires_grad = False
-        alphas.clamp_(min=0.0)
-        #print(alphas)
-
-        for param in main_model.parameters():
-            param.requires_grad = True
 
         if ((i + 1) % select_every == 0) and func_name not in ['Full']:
 
@@ -349,7 +387,7 @@ print("Full training time ",ending-starting, file=logfile)
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs)
 ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)
+print("Random training time ",ending-starting, file=logfile)
 
 methods = [full_fair,rand_fair,sub_fair,full,rand]
 methods_names=["Full with Constraints","Random with Constraints","Subset with Constraints","Full","Random"] 
