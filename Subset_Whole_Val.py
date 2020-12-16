@@ -132,7 +132,7 @@ print_every = 50
 
 deltas = torch.tensor(delt) #torch.tensor([0.1 for _ in range(len(x_val_list))])
 
-def train_model(func_name,start_rand_idxs=None, bud=None):
+def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
     idxs = start_rand_idxs
 
@@ -162,7 +162,7 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
     loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
             transform=None),shuffle=False,batch_size=train_batch_size)
 
-    for i in range(num_epochs):
+    for i in range(curr_epoch):#num_epochs):
         
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
         #inputs, targets = x_trn[idxs], y_trn[idxs]
@@ -242,14 +242,14 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         print("Starting Random with fairness Run!")
     elif func_name == 'Fair_subset':
 
+        cached_state_dict = copy.deepcopy(main_model.state_dict())
+
         fsubset = FindSubset(x_trn, y_trn, x_val, y_val,main_model,main_optimizer,criterion,\
             device,deltas,learning_rate,reg_lambda)
 
         fsubset.precompute(int(num_epochs/4),sub_epoch)
         
-        '''cached_state_dict = copy.deepcopy(main_model.state_dict())
-        clone_dict = copy.deepcopy(main_model.state_dict())
-        main_model.load_state_dict(cached_state_dict)'''
+        main_model.load_state_dict(cached_state_dict)
         
         print("Starting Subset of size ",fraction," with fairness Run!")
 
@@ -259,6 +259,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     np.random.shuffle(np_sub_idxs)
     loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
             transform=None),shuffle=False,batch_size=train_batch_size)
+
+    stop_epoch = num_epochs
     
     for i in range(num_epochs):
 
@@ -308,7 +310,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             alphas.requires_grad = True
 
             scores_val = main_model(x_val)
-            constraint = criterion(scores_val, y_val)
+            constraint = criterion(scores_val, y_val) - deltas
             multiplier = -1.0*alphas*constraint#torch.dot(-1.0*alphas ,constraint)
 
             #print(alphas,constraint)
@@ -325,6 +327,12 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             for param in main_model.parameters():
                 param.requires_grad = True
+
+        #print(alphas,constraint)
+        if constraint.item() <= 0 and (i + 1) % select_every == 0:
+            print(i)
+            stop_epoch = i
+            break 
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
@@ -359,9 +367,10 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         outputs = main_model(x_tst)
         test_loss = criterion(outputs, y_tst)
 
-    return [val_loss,test_loss]#[val_accuracy, val_classes, tst_accuracy, tst_classes]
+    return [val_loss,test_loss,stop_epoch]#[val_accuracy, val_classes, tst_accuracy, tst_classes]
 
 
+np.random.seed(42)
 starting = time.process_time() 
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
@@ -379,13 +388,15 @@ sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
+curr_epoch = max(full_fair[2],rand_fair[2],sub_fair[2])
+
 starting = time.process_time() 
-full = train_model('Random', np.random.choice(N, size=N, replace=False))
+full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
 ending = time.process_time() 
 print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-rand = train_model('Random',rand_idxs)
+rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
