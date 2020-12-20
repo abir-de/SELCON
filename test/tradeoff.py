@@ -24,7 +24,8 @@ def regularizer(beta):
     return cp.pnorm(beta, p=2)**2
 
 def objective_fn(X, Y, beta, lambd):
-    return loss_fn(X, Y, beta) + lambd*regularizer(beta)#*len(X)
+    #print(len(X))
+    return (1.0 / X.shape[0]) *loss_fn(X, Y, beta) + lambd*regularizer(beta)#*len(X)
 
 def mse(X, Y, beta):
     #print(X.shape)
@@ -48,8 +49,8 @@ fraction = 1
 #data_name = "German_credit"
 #data_name = 'cadata'
 #data_name = 'abalone'
-data_name = 'cpusmall'
-#data_name = "synthetic"
+#data_name = 'cpusmall'
+data_name = "synthetic"
 #data_name = 'housing'
 #data_name = "mg"
 reg_lambda = 0.1
@@ -106,7 +107,11 @@ x_trn, y_trn = x_trn.astype(np.float32), y_trn.astype(np.float32) #np.delete(ful
 
 beta = cp.Variable(x_trn.shape[1])
 lambd = cp.Parameter(nonneg=True)
-objective = cp.Minimize(objective_fn(x_trn, y_trn, beta, lambd))
+
+np.random.seed(42)
+#rand_idxs = list(np.random.choice(x_trn.shape[0], size=int(0.1*x_trn.shape[0]), replace=False))
+rand_idxs = list(np.random.choice(x_trn.shape[0], size=int(x_trn.shape[0]), replace=False))
+objective = cp.Minimize(objective_fn(x_trn[rand_idxs], y_trn[rand_idxs], beta, lambd))
 
 #objective = cp.Minimize(cp.sum_squares(x_trn @ beta - y_trn) + lambd *cp.pnorm(beta, p=2)**2)
 
@@ -116,9 +121,9 @@ objective = cp.Minimize(objective_fn(x_trn, y_trn, beta, lambd))
 #lamda = np.concatenate((np.zeros(1),np.logspace(-8,-1,num=8,base=10),np.logspace(-8,-1,num=8,base=10)*5\
 #    ,np.ones(1)))
 
-lamda = np.concatenate((np.zeros(1),np.logspace(-8,4,num=13,base=10), np.logspace(-8,4,num=13,base=10)*5))
-
-lamda.sort()
+#lamda = np.concatenate((np.zeros(1),np.logspace(-8,4,num=13,base=10), np.logspace(-8,4,num=13,base=10)*5))
+#lamda.sort()
+lamda = [0.01]
 #print(lamda)
 
 deltas = [i/100 for i in range(99,3,-3)]
@@ -129,9 +134,9 @@ deltas.insert(0,1)
 #deltas = [i/100 for i in range(24,3,-3)]
 
 sigma = 30
-sigma_w = 25
+sigma_w = 10
 
-for dl in deltas:
+'''for dl in deltas:
 
     if data_name == "synthetic":
         all_logs_dir = './results/CVX/'+data_name+"/w="+str(sigma_w)+'/delta_'+str(sigma)
@@ -140,7 +145,7 @@ for dl in deltas:
     
     print(all_logs_dir)
     subprocess.run(["mkdir", "-p", all_logs_dir])
-    path_logfile = os.path.join(all_logs_dir, data_name + '_delta='+str(dl)+'.txt')
+    path_logfile = os.path.join(all_logs_dir, data_name +'_delta='+str(dl)+'.txt')
     
     logfile = None
     print(dl)
@@ -192,7 +197,70 @@ for dl in deltas:
         logfile.close()
         logfile = None
     else:
+        break'''
+
+logfile = None
+typeOf = "random_constrait"#"Full_no_constraint"
+
+if data_name == "synthetic":
+    all_logs_dir = './results/CVX/'+data_name+"/w="+str(sigma_w)+'/delta_'+str(sigma)
+else:
+    all_logs_dir = './results/CVX/'+data_name+'/delta'
+
+starting = time.process_time() 
+
+for dl in [1]:#deltas:
+    
+    print(all_logs_dir)
+    subprocess.run(["mkdir", "-p", all_logs_dir])
+    path_logfile = os.path.join(all_logs_dir, data_name +typeOf+'_delta='+str(dl)+'.txt')
+
+    print(dl)
+    
+    constraints = [mse(x_val, y_val, beta) <= dl]
+
+    prob = cp.Problem(objective)#, constraints)
+
+    lambd.value = lamda[0]*len(x_trn[rand_idxs])
+    # The optimal objective value is returned by `prob.solve()`.
+
+    try:
+        result = prob.solve()#verbose=True)
+        if dl == 1:
+            logfile = open(path_logfile, 'w')
+    except:
+        print("An exception occurred")
+
+        if logfile is not None:
+            logfile.close()
+            logfile = None
         break
+
+    if beta.value is None:
+        break
+    
+    val_error = mse_value(x_val, y_val, beta)
+    tst_error = mse_value(x_tst, y_tst, beta)
+
+    #print(beta.value)
+
+    #print("Delta",end=" ")
+    print(dl,end=",",file=logfile)
+
+    #print("Test",end=" ")
+    print("{0:.3f}".format(tst_error),end=",",file=logfile)
+
+    #print("Validation",end=" ")
+    print("{0:.3f}".format(val_error),end=",",file=logfile)
+
+
+    print("{0:.3f}".format(objective.value),",","{0:.3f}".format(mse_value(x_trn, y_trn, beta)),\
+        ",","{0:.3f}".format(lambd.value*regularizer(beta).value),file=logfile) #*len(x_trn)*len(x_trn[rand_idxs])*
+    #for con in constraints:
+    #   print(con.dual_value)
+
+ending = time.process_time() 
+print("CVX time ",ending-starting)#, file=logfile)
 
 '''all_logs_dir = './results/CVX/'+data_name
 print(all_logs_dir)

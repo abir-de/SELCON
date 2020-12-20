@@ -488,8 +488,8 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
 
     elif dset_name == "synthetic":
 
-        data_dims = 30#100
-        samples = 5000
+        data_dims = 300 #100
+        samples = 1000000
 
         np.random.seed(42)
         
