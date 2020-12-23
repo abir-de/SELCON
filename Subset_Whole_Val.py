@@ -527,36 +527,36 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 np.random.seed(42)
 starting = time.process_time() 
-#full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
+full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
 print("Full with fairness training time ",ending-starting, file=logfile)
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
 starting = time.process_time() 
-#rand_fair = train_model_fair('Random',rand_idxs,bud)
+rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
 print("Random with fairness training time ",ending-starting, file=logfile)
+
+curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
+
+starting = time.process_time() 
+full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
+ending = time.process_time() 
+print("Full training time ",ending-starting, file=logfile)
+
+starting = time.process_time() 
+rand = train_model('Random',rand_idxs,curr_epoch)
+ending = time.process_time() 
+print("Random training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
-curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
-
-starting = time.process_time() 
-#full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
-ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)
-
-starting = time.process_time() 
-#rand = train_model('Random',rand_idxs,curr_epoch)
-ending = time.process_time() 
-print("Random training time ",ending-starting, file=logfile)
-
-methods = [full_fair,rand_fair,full,rand]#sub_fair,
-methods_names=["Full with Constraints","Random with Constraints","Full","Random"]#"Subset with Constraints",
+methods = [full_fair,rand_fair,full,rand,sub_fair]
+methods_names=["Full with Constraints","Random with Constraints","Full","Random","Subset with Constraints"]
 
 #methods = [full,rand]
 #methods_names=["Full","Random"] 
