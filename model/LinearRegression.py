@@ -4,7 +4,7 @@ import torch.nn as nn
 class RegressionNet(nn.Module):
     def __init__(self, input_dim):
         super(RegressionNet, self).__init__()
-        self.linear = nn.Linear(input_dim, 1)
+        self.linear = nn.Linear(input_dim, 1)#,bias=False)
         #self.feature_dim = input_dim
     
     def forward(self, x, last=False):
