@@ -227,6 +227,9 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         else:
             stop_count = 0
 
+        if i>=2000:
+            break
+
         #print(temp_loss,prev_loss)
         prev_loss2 = prev_loss
         prev_loss = temp_loss
@@ -546,6 +549,12 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 
 np.random.seed(42)
+
+starting = time.process_time() 
+sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
+ending = time.process_time() 
+print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
+
 starting = time.process_time() 
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
@@ -569,11 +578,6 @@ starting = time.process_time()
 rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
-
-starting = time.process_time() 
-sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
-ending = time.process_time() 
-print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 methods = [full_fair,rand_fair,full,rand,sub_fair]
 methods_names=["Full with Constraints","Random with Constraints","Full","Random","Subset with Constraints"]
