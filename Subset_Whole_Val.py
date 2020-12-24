@@ -283,9 +283,11 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     else:'''
     main_model = RegressionNet(M)
 
+    main_model = main_model.to(device)
+
     #criterion_sum = nn.MSELoss(reduction='sum')
     
-    alphas = torch.rand_like(deltas,requires_grad=True)
+    alphas = torch.rand_like(deltas,device=device,requires_grad=True)
     #print(alphas)
     #alphas = torch.ones_like(deltas,requires_grad=True)
     '''main_optimizer = optim.SGD([{'params': main_model.parameters()},
