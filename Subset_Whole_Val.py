@@ -586,7 +586,7 @@ for me in range(len(methods)):
     
     print("\n", file=logfile)
     print(methods_names[me],file=logfile)
-    print("Validation Error","|",methods[me][0],"|",file=logfile)
+    print("Validation Error","|",methods[me][0].item(),"|",file=logfile)
     #print('---------------------------------------------------------------------',file=logfile)
 
     '''print('|Class | Error|',file=logfile)
@@ -596,7 +596,7 @@ for me in range(len(methods)):
 
     #print('---------------------------------------------------------------------',file=logfile)
 
-    print("Test Error","|",methods[me][1],"|",file=logfile)
+    print("Test Error","|",methods[me][1].item(),"|",file=logfile)
     print('---------------------------------------------------------------------',file=logfile)
 
     '''print('|Class | Error|',file=logfile)

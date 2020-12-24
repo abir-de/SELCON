@@ -567,7 +567,7 @@ class FindSubset_Vect(object):
 
         print("Finishing F phi")
 
-        self.F_values = torch.zeros(len(self.x_trn))
+        self.F_values = torch.zeros(len(self.x_trn),device=self.device)
         #alphas_orig = copy.deepcopy(alphas)
         #cached_state_dict = copy.deepcopy(self.model.state_dict())
 
@@ -583,7 +583,7 @@ class FindSubset_Vect(object):
         loader_tr = DataLoader(CustomDataset_WithId(self.x_trn, self.y_trn,\
             transform=None),shuffle=False,batch_size=self.batch_size)
 
-        ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn.shape[0]))
+        ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn.shape[0])).to(self.device)
 
         beta1,beta2 = main_optimizer.param_groups[0]['betas']
         #main_optimizer.param_groups[0]['eps']
@@ -594,7 +594,7 @@ class FindSubset_Vect(object):
             inputs, targets = inputs.to(self.device), targets.to(self.device)
         
             weights = flat.repeat(targets.shape[0], 1)
-            ele_alphas = alphas.repeat(targets.shape[0])
+            ele_alphas = alphas.repeat(targets.shape[0]).to(self.device)
             #print(weights.shape)
 
             exp_avg_w = torch.zeros_like(weights)
@@ -777,7 +777,7 @@ class FindSubset_Vect(object):
         loader_tr = DataLoader(CustomDataset_WithId(self.x_trn[curr_subset], self.y_trn[curr_subset],\
             transform=None),shuffle=False,batch_size=self.batch_size)
 
-        ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0]))
+        ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0])).to(self.device)
 
         beta1,beta2 = main_optimizer.param_groups[0]['betas']
         #main_optimizer.param_groups[0]['eps']
@@ -792,7 +792,7 @@ class FindSubset_Vect(object):
             inputs, targets = inputs.to(self.device), targets.to(self.device)
         
             weights = flat.repeat(targets.shape[0], 1)
-            ele_alphas = alphas.repeat(targets.shape[0])
+            ele_alphas = alphas.repeat(targets.shape[0]).to(self.device)
 
             exp_avg_w = torch.zeros_like(weights)
             exp_avg_sq_w = torch.zeros_like(weights)
@@ -807,8 +807,8 @@ class FindSubset_Vect(object):
 
             for i in range(p_epoch):
 
-                fin_val_loss_g = torch.zeros_like(weights)
-                val_losses = torch.zeros_like(ele_delta)
+                fin_val_loss_g = torch.zeros_like(weights,device=self.device)
+                val_losses = torch.zeros_like(ele_delta,device=self.device)
                 for batch_idx_val in list(loader_val.batch_sampler):
                     
                     inputs_val, targets_val = loader_val.dataset[batch_idx_val]
