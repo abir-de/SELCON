@@ -48,7 +48,7 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 1#5
+sub_epoch = 5
 
 batch_size = 12000
 
@@ -57,16 +57,16 @@ learning_rate = 0.01 #0.05
 
 fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
 
-x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
+'''x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
      torch.from_numpy(fullset[1]).float().to(device)
 x_tst, y_tst = torch.from_numpy(testset[0]).float().to(device),\
      torch.from_numpy(testset[1]).float().to(device) 
 x_val, y_val = torch.from_numpy(valset[0]).float().to(device),\
-     torch.from_numpy(valset[1]).float().to(device)
+     torch.from_numpy(valset[1]).float().to(device)'''
 
-'''x_trn,y_trn =  fullset[0],fullset[1]
-x_val,y_val =  valset[0],valset[1]
-x_tst, y_tst = testset[0],testset[1]'''
+x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
+x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
+x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
 
 if data_name == "synthetic":
     all_logs_dir = './results/Whole/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
@@ -184,6 +184,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         for batch_idx in list(loader_tr.batch_sampler):
             
             inputs, targets = loader_tr.dataset[batch_idx]
+            inputs, targets = inputs.to(device), targets.to(device)
             main_optimizer.zero_grad()
             l2_reg = 0
             
@@ -252,6 +253,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         for batch_idx in list(loader_val.batch_sampler):
             
             inputs, targets = loader_val.dataset[batch_idx]
+            inputs, targets = inputs.to(device), targets.to(device)
         
             val_out = main_model(inputs)
             val_loss += criterion(val_out, targets)
@@ -262,6 +264,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         for batch_idx in list(loader_tst.batch_sampler):
             
             inputs, targets = loader_tst.dataset[batch_idx]
+            inputs, targets = inputs.to(device), targets.to(device)
 
             outputs = main_model(inputs)
             test_loss += criterion(outputs, targets)
@@ -312,13 +315,13 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
         fsubset_d.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
 
-        main_model.load_state_dict(cached_state_dict)
+        '''main_model.load_state_dict(cached_state_dict)
         alpha_orig = copy.deepcopy(alphas)
 
         fsubset = FindSubset(x_trn, y_trn, x_val, y_val,main_model,criterion,\
             device,deltas,learning_rate,reg_lambda)
 
-        fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig,batch_size)
+        fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig,batch_size)'''
         
         main_model.load_state_dict(cached_state_dict)
         
@@ -356,6 +359,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         for batch_idx in list(loader_tr.batch_sampler):
             
             inputs_trn, targets_trn = loader_tr.dataset[batch_idx]
+            inputs_trn, targets_trn = inputs_trn.to(device), targets_trn.to(device)
 
             main_optimizer.zero_grad()
             l2_reg = 0
@@ -382,6 +386,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             for batch_idx in list(loader_val.batch_sampler):
                     
                 inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(device), targets.to(device)
             
                 val_out = main_model(inputs)
                 constraint += criterion(val_out, targets)
@@ -410,6 +415,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             for batch_idx in list(loader_val.batch_sampler):
                     
                 inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(device), targets.to(device)
             
                 val_out = main_model(inputs)
                 constraint += criterion(val_out, targets)
@@ -448,18 +454,28 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         if ((i + 1) % select_every == 0) and func_name not in ['Full']:
 
             cached_state_dict = copy.deepcopy(main_model.state_dict())
-            clone_dict = copy.deepcopy(main_model.state_dict())
+            clone_dict = copy.deepcopy(cached_state_dict)
+            alpha_orig = copy.deepcopy(alphas)
 
             if func_name == 'Fair_subset':
 
-                sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alphas,bud,train_batch_size)
+                d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
+                    train_batch_size)
+
+                sub_idxs = d_sub_idxs
+                #print(d_sub_idxs[:10])
+
+                '''clone_dict = copy.deepcopy(cached_state_dict)
+                alpha_orig = copy.deepcopy(alphas)
+
+                sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
+                    train_batch_size)
+                print(sub_idxs[:10])'''
 
                 main_optimizer = torch.optim.Adam([
                 {'params': main_model.parameters()}], lr=learning_rate)
                 
                 dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
-
-                #print(sub_idxs[:10])
 
             main_model.load_state_dict(cached_state_dict)
 
@@ -506,6 +522,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         for batch_idx in list(loader_val.batch_sampler):
             
             inputs, targets = loader_val.dataset[batch_idx]
+            inputs, targets = inputs.to(device), targets.to(device)
         
             val_out = main_model(inputs)
             val_loss += criterion(val_out, targets)
@@ -516,6 +533,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         for batch_idx in list(loader_tst.batch_sampler):
             
             inputs, targets = loader_tst.dataset[batch_idx]
+            inputs, targets = inputs.to(device), targets.to(device)
 
             outputs = main_model(inputs)
             test_loss += criterion(outputs, targets)

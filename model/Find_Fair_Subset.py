@@ -75,6 +75,7 @@ class FindSubset(object):
             for batch_idx in list(loader_val.batch_sampler):
                     
                 inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
             
                 val_out = self.model(inputs)
                 constraint += self.criterion(val_out, targets)
@@ -102,6 +103,7 @@ class FindSubset(object):
             for batch_idx in list(loader_val.batch_sampler):
                     
                 inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
             
                 val_out = self.model(inputs)
                 constraint += self.criterion(val_out, targets)
@@ -148,6 +150,7 @@ class FindSubset(object):
             for i in range(p_epoch):
                 
                 inputs_trn, targets_trn = self.x_trn[trn_id], self.y_trn[trn_id].view(-1)
+                inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
                 main_optimizer.zero_grad()
                 l2_reg = 0
                 
@@ -162,6 +165,7 @@ class FindSubset(object):
                 for batch_idx in list(loader_val.batch_sampler):
                         
                     inputs, targets = loader_val.dataset[batch_idx]
+                    inputs, targets = inputs.to(self.device), targets.to(self.device)
                 
                     val_out = self.model(inputs)
                     constraint += self.criterion(val_out, targets)
@@ -201,6 +205,7 @@ class FindSubset(object):
                 for batch_idx in list(loader_val.batch_sampler):
                         
                     inputs, targets = loader_val.dataset[batch_idx]
+                    inputs, targets = inputs.to(self.device), targets.to(self.device)
                 
                     val_out = self.model(inputs)
                     constraint += self.criterion(val_out, targets)
@@ -235,6 +240,7 @@ class FindSubset(object):
                 for batch_idx in list(loader_val.batch_sampler):
                         
                     inputs, targets = loader_val.dataset[batch_idx]
+                    inputs, targets = inputs.to(self.device), targets.to(self.device)
                 
                     val_out = self.model(inputs)
                     constraint += self.criterion(val_out, targets)
@@ -259,6 +265,8 @@ class FindSubset(object):
         
         self.model.load_state_dict(theta_init)
 
+        #print(curr_subset)
+
         '''main_optimizer = torch.optim.Adam([
                 {'params': self.model.parameters()}], lr=self.lr)
                 
@@ -277,12 +285,16 @@ class FindSubset(object):
             for batch_idx in list(loader_tr.batch_sampler):
             
                 inputs, targets, _ = loader_tr.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
 
                 scores = self.model(inputs)
+                print(self.criterion(scores, targets).item())
 
                 F_curr += self.criterion(scores, targets).item() 
 
             F_curr /= len(loader_tr.batch_sampler)
+
+            #print(F_curr)
 
             l2_reg = 0
             
@@ -293,6 +305,7 @@ class FindSubset(object):
             for batch_idx in list(loader_val.batch_sampler):
             
                 inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
                 scores = self.model(inputs)
                 valloss += self.criterion(scores, targets).item() 
             
@@ -300,6 +313,8 @@ class FindSubset(object):
             multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
             F_curr += (self.lam*l2_reg*len(curr_subset) + multiplier).item()
+
+        #print(F_curr)
 
         alphas_orig = copy.deepcopy(alphas)
         cached_state_dict = copy.deepcopy(self.model.state_dict())
@@ -326,9 +341,11 @@ class FindSubset(object):
 
             for i in range(p_epoch):
 
+                trn_loss = 0.
                 for batch_idx in list(loader_tr.batch_sampler):
                 
-                    inputs_trn, targets_trn, idxs = loader_tr.dataset[batch_idx]
+                    inputs_trn, targets_trn, _ = loader_tr.dataset[batch_idx]
+                    inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
                     main_optimizer.zero_grad()
                     
                     """l2_reg = 0
@@ -340,55 +357,63 @@ class FindSubset(object):
                     l2_reg = torch.sum(flat*flat)
 
                     scores = self.model(inputs_trn)
-                    
-                    constraint = 0.
-                    for batch_idx in list(loader_val.batch_sampler):
-                            
-                        inputs, targets = loader_val.dataset[batch_idx]
-                    
-                        val_out = self.model(inputs)
-                        constraint += self.criterion(val_out, targets)
-                    
-                    constraint /= len(loader_val.batch_sampler)
-                    constraint = constraint - self.delta
-                    multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
-                    loss = self.criterion(scores, targets_trn) +  self.lam*l2_reg*len(removed) + multiplier
-                    #m_values[sub_id] = F_curr - loss.item()
-                    loss.backward()
+                    trn_loss += self.criterion(scores, targets_trn)
                     
-                    main_optimizer.step()
-                    #scheduler.step()
+                constraint = 0.
+                for batch_idx in list(loader_val.batch_sampler):
+                        
+                    inputs, targets = loader_val.dataset[batch_idx]
+                    inputs, targets = inputs.to(self.device), targets.to(self.device)
+                
+                    val_out = self.model(inputs)
+                    constraint += self.criterion(val_out, targets)
+                
+                constraint /= len(loader_val.batch_sampler)
+                constraint = constraint - self.delta
+                multiplier = alphas*constraint #torch.dot(alphas,constraint)
 
-                    '''for param in self.model.parameters():
-                        param.requires_grad = False
-                    alphas.requires_grad = True'''
+                loss = trn_loss/len(loader_tr.batch_sampler) + self.lam*l2_reg*len(removed) + multiplier
+                #m_values[sub_id] = F_curr - loss.item()
+                loss.backward()
 
-                    dual_optimizer.zero_grad()
+                '''if sub_id == curr_subset[0]:
+                    for param in self.model.parameters():
+                        print(param.grad)'''
+                
+                main_optimizer.step()
+                #scheduler.step()
 
-                    constraint = 0.
-                    for batch_idx in list(loader_val.batch_sampler):
-                            
-                        inputs, targets = loader_val.dataset[batch_idx]
-                    
-                        val_out = self.model(inputs)
-                        constraint += self.criterion(val_out, targets)
-                    
-                    constraint /= len(loader_val.batch_sampler)
-                    constraint = constraint - self.delta
-                    multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
-                    
-                    multiplier.backward()
+                '''for param in self.model.parameters():
+                    param.requires_grad = False
+                alphas.requires_grad = True'''
 
-                    dual_optimizer.step()
+                dual_optimizer.zero_grad()
 
-                    alphas.requires_grad = False
-                    alphas.clamp_(min=0.0)
-                    alphas.requires_grad = True
-                    #print(alphas)
+                constraint = 0.
+                for batch_idx in list(loader_val.batch_sampler):
+                        
+                    inputs, targets = loader_val.dataset[batch_idx]
+                    inputs, targets = inputs.to(self.device), targets.to(self.device)
+                
+                    val_out = self.model(inputs)
+                    constraint += self.criterion(val_out, targets)
+                
+                constraint /= len(loader_val.batch_sampler)
+                constraint = constraint - self.delta
+                multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
+                
+                multiplier.backward()
 
-                    '''for param in self.model.parameters():
-                        param.requires_grad = True'''
+                dual_optimizer.step()
+
+                alphas.requires_grad = False
+                alphas.clamp_(min=0.0)
+                alphas.requires_grad = True
+                #print(alphas)
+
+                '''for param in self.model.parameters():
+                    param.requires_grad = True'''
 
             with torch.no_grad():
 
@@ -420,7 +445,11 @@ class FindSubset(object):
                 flat = torch.cat(l)
                 l2_reg = torch.sum(flat*flat)
 
-                m_values[sub_id] = trn_loss + self.lam*l2_reg*len(removed) + multiplier
+                m_values[sub_id] = F_curr - (trn_loss + self.lam*l2_reg*len(removed) + multiplier) #F_curr - 
+
+        #print(curr_subset[:10])
+        #print(F_curr)
+        #print(m_values[curr_subset][:10])
 
         values,indices =m_values.topk(budget,largest=False)
 
@@ -489,6 +518,7 @@ class FindSubset_Vect(object):
             for batch_idx in list(loader_val.batch_sampler):
                     
                 inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
             
                 val_out = self.model(inputs)
                 constraint += self.criterion(val_out, targets)
@@ -514,6 +544,7 @@ class FindSubset_Vect(object):
             for batch_idx in list(loader_val.batch_sampler):
                     
                 inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
             
                 val_out = self.model(inputs)
                 constraint += self.criterion(val_out, targets)
@@ -552,7 +583,6 @@ class FindSubset_Vect(object):
         loader_tr = DataLoader(CustomDataset_WithId(self.x_trn, self.y_trn,\
             transform=None),shuffle=False,batch_size=self.batch_size)
 
-
         ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn.shape[0]))
 
         beta1,beta2 = main_optimizer.param_groups[0]['betas']
@@ -561,6 +591,7 @@ class FindSubset_Vect(object):
         for batch_idx in list(loader_tr.batch_sampler):
 
             inputs, targets, idxs = loader_tr.dataset[batch_idx]
+            inputs, targets = inputs.to(self.device), targets.to(self.device)
         
             weights = flat.repeat(targets.shape[0], 1)
             ele_alphas = alphas.repeat(targets.shape[0])
@@ -595,9 +626,11 @@ class FindSubset_Vect(object):
             for i in range(p_epoch):
 
                 fin_val_loss_g = torch.zeros_like(weights)
-                for batch_idx in list(loader_val.batch_sampler):
+                val_losses = torch.zeros_like(ele_delta)
+                for batch_idx_val in list(loader_val.batch_sampler):
                     
-                    inputs_val, targets_val = loader_val.dataset[batch_idx]
+                    inputs_val, targets_val = loader_val.dataset[batch_idx_val]
+                    inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
                     exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0]).view(-1,1)),dim=1)
                     #print(exten_val.shape)
@@ -606,6 +639,7 @@ class FindSubset_Vect(object):
                     #print(exten_val_y[0])
                 
                     val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
+                    val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
                     val_loss_g = torch.unsqueeze(2*val_loss_p, dim=2).repeat(1,1,flat.shape[0])
                     #print(val_loss_g[0][0])
 
@@ -636,7 +670,7 @@ class FindSubset_Vect(object):
 
                 #print(weights[0])
 
-                alpha_grad = torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta
+                alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
 
                 exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
                 exp_avg_sq_a.mul_(beta2).addcmul_(1.0 - beta2, alpha_grad, alpha_grad)
@@ -647,7 +681,19 @@ class FindSubset_Vect(object):
 
                 #ele_alphas = ele_alphas + self.lr*(torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta)
 
-            val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
+            val_losses = 0.
+            for batch_idx_val in list(loader_val.batch_sampler):
+                    
+                inputs_val, targets_val = loader_val.dataset[batch_idx_val]
+                inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
+
+                exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0]).view(-1,1)),dim=1)
+                exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                
+                val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
+
+                val_losses+= torch.mean(val_loss*val_loss,dim=0)
+            
             reg = torch.sum(weights*weights,dim=1)
             trn_loss = torch.sum(exten_inp*weights,dim=1) - targets
 
@@ -656,7 +702,7 @@ class FindSubset_Vect(object):
             #    ((torch.mean(val_loss*val_loss,dim=0)-ele_delta)*ele_alphas)[0])
 
             self.F_values[idxs] = trn_loss*trn_loss+ self.lam*reg +\
-                (torch.mean(val_loss*val_loss,dim=0)-ele_delta)*ele_alphas
+                (val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas
 
         #print(self.F_values[:10])
 
@@ -665,9 +711,12 @@ class FindSubset_Vect(object):
 
     def return_subset(self,theta_init,p_epoch,curr_subset,alphas,budget,batch):
 
-        m_values = copy.deepcopy(self.F_values) #torch.zeros(len(self.x_trn))
+        m_values = self.F_values.detach().clone() #torch.zeros(len(self.x_trn))
         
         self.model.load_state_dict(theta_init)
+
+        #print(theta_init)
+        #print(curr_subset)
 
         '''main_optimizer = torch.optim.Adam([
                 {'params': self.model.parameters()}], lr=self.lr)
@@ -687,12 +736,15 @@ class FindSubset_Vect(object):
             for batch_idx in list(loader_tr.batch_sampler):
             
                 inputs, targets, _ = loader_tr.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
 
                 scores = self.model(inputs)
+                #print(self.criterion(scores, targets).item())
 
                 F_curr += self.criterion(scores, targets).item() 
 
             F_curr /= len(loader_tr.batch_sampler)
+            #print(F_curr)
 
             l2_reg = 0
             
@@ -703,6 +755,8 @@ class FindSubset_Vect(object):
             for batch_idx in list(loader_val.batch_sampler):
             
                 inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
+
                 scores = self.model(inputs)
                 valloss += self.criterion(scores, targets).item() 
             
@@ -711,127 +765,178 @@ class FindSubset_Vect(object):
 
             F_curr += (self.lam*l2_reg*len(curr_subset) + multiplier).item()
 
-        alphas_orig = copy.deepcopy(alphas)
-        cached_state_dict = copy.deepcopy(self.model.state_dict())
+        #print(F_curr)
 
-        #scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[10,20,40,100],\
-        #    gamma=0.5) #[e*2 for e in change]
+        main_optimizer = torch.optim.Adam([{'params': self.model.parameters()}], lr=self.lr)
+        dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
 
-        #alphas.requires_grad = False
+        l = [torch.flatten(p) for p in self.model.state_dict().values()]
+        flat = torch.cat(l)
+
+        loader_tr = DataLoader(CustomDataset_WithId(self.x_trn[curr_subset], self.y_trn[curr_subset],\
+            transform=None),shuffle=False,batch_size=self.batch_size)
+
+        ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0]))
+
+        beta1,beta2 = main_optimizer.param_groups[0]['betas']
+        #main_optimizer.param_groups[0]['eps']
+
+        rem_len = (len(curr_subset)-1)
+
+        b_idxs = 0
+
+        for batch_idx in list(loader_tr.batch_sampler):
+
+            inputs, targets, _ = loader_tr.dataset[batch_idx]
+            inputs, targets = inputs.to(self.device), targets.to(self.device)
         
-        for sub_id in curr_subset:
-            removed = copy.deepcopy(curr_subset)
-            removed.remove(sub_id)
+            weights = flat.repeat(targets.shape[0], 1)
+            ele_alphas = alphas.repeat(targets.shape[0])
 
-            alphas = copy.deepcopy(alphas_orig)
-            self.model.load_state_dict(cached_state_dict)
+            exp_avg_w = torch.zeros_like(weights)
+            exp_avg_sq_w = torch.zeros_like(weights)
 
-            main_optimizer = torch.optim.Adam([
-                {'params': self.model.parameters()}], lr=self.lr)
-                
-            dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
+            exp_avg_a = torch.zeros_like(ele_alphas)
+            exp_avg_sq_a = torch.zeros_like(ele_alphas)
 
-            loader_tr = DataLoader(CustomDataset_WithId(self.x_trn[removed], self.y_trn[removed],\
-            transform=None),shuffle=False,batch_size=batch)
+            exten_inp = torch.cat((inputs,torch.ones(inputs.shape[0]).view(-1,1)),dim=1)
+
+            bias_correction1 = 1.0 
+            bias_correction2 = 1.0 
 
             for i in range(p_epoch):
 
-                for batch_idx in list(loader_tr.batch_sampler):
+                fin_val_loss_g = torch.zeros_like(weights)
+                val_losses = torch.zeros_like(ele_delta)
+                for batch_idx_val in list(loader_val.batch_sampler):
+                    
+                    inputs_val, targets_val = loader_val.dataset[batch_idx_val]
+                    inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
+
+                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0]).view(-1,1)),dim=1)
+                    #print(exten_val.shape)
+
+                    exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                    #print(exten_val_y[0])
                 
-                    inputs_trn, targets_trn, idxs = loader_tr.dataset[batch_idx]
-                    main_optimizer.zero_grad()
+                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
+                    val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
+                    val_loss_g = torch.unsqueeze(2*val_loss_p, dim=2).repeat(1,1,flat.shape[0])
+                    #print(val_loss_g[0][0])
+
+                    mod_val = torch.unsqueeze(exten_val, dim=1).repeat(1,targets.shape[0],1)
+                    #print(mod_val[0])
+                    fin_val_loss_g += torch.mean(val_loss_g*mod_val,dim=0)
+
+                fin_val_loss_g /= len(loader_val.batch_sampler)
+
+                sum_fin_trn_loss_g = torch.zeros_like(weights)
+                for batch_idx_trn in list(loader_tr.batch_sampler):
                     
-                    """l2_reg = 0
-                    for param in self.model.parameters():
-                        l2_reg += torch.norm(param)"""
+                    inputs_trn, targets_trn,_ = loader_tr.dataset[batch_idx_trn]
+                    inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
 
-                    l = [torch.flatten(p) for p in self.model.parameters()]
-                    flat = torch.cat(l)
-                    l2_reg = torch.sum(flat*flat)
-
-                    scores = self.model(inputs_trn)
-                    
-                    constraint = 0.
-                    for batch_idx in list(loader_val.batch_sampler):
-                            
-                        inputs, targets = loader_val.dataset[batch_idx]
-                    
-                        val_out = self.model(inputs)
-                        constraint += self.criterion(val_out, targets)
-                    
-                    constraint /= len(loader_val.batch_sampler)
-                    constraint = constraint - self.delta
-                    multiplier = alphas*constraint #torch.dot(alphas,constraint)
-
-                    loss = self.criterion(scores, targets_trn) +  self.lam*l2_reg*len(removed) + multiplier
-                    #m_values[sub_id] = F_curr - loss.item()
-                    loss.backward()
-                    
-                    main_optimizer.step()
-                    #scheduler.step()
-
-                    '''for param in self.model.parameters():
-                        param.requires_grad = False
-                    alphas.requires_grad = True'''
-
-                    dual_optimizer.zero_grad()
-
-                    constraint = 0.
-                    for batch_idx in list(loader_val.batch_sampler):
-                            
-                        inputs, targets = loader_val.dataset[batch_idx]
-                    
-                        val_out = self.model(inputs)
-                        constraint += self.criterion(val_out, targets)
-                    
-                    constraint /= len(loader_val.batch_sampler)
-                    constraint = constraint - self.delta
-                    multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
-                    
-                    multiplier.backward()
-
-                    dual_optimizer.step()
-
-                    alphas.requires_grad = False
-                    alphas.clamp_(min=0.0)
-                    alphas.requires_grad = True
-                    #print(alphas)
-
-                    '''for param in self.model.parameters():
-                        param.requires_grad = True'''
-
-            with torch.no_grad():
-
-                trn_loss = 0.
-                for batch_idx in list(loader_tr.batch_sampler):
+                    exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0]).view(-1,1)),dim=1)
+                    exten_trn_y = targets_trn.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                    #print(exten_val_y[0])
                 
-                    inputs_trn, targets_trn, idxs = loader_tr.dataset[batch_idx]
-                    main_optimizer.zero_grad()
+                    trn_loss_p = torch.matmul(exten_trn,torch.transpose(weights, 0, 1)) - exten_trn_y
+                    sum_trn_loss_g = torch.unsqueeze(2*trn_loss_p, dim=2).repeat(1,1,flat.shape[0])
+                    #print(val_loss_g[0][0])
 
-                    scores = self.model(inputs_trn)
+                    mod_trn = torch.unsqueeze(exten_trn, dim=1).repeat(1,targets.shape[0],1)
+                    sum_fin_trn_loss_g += torch.sum(sum_trn_loss_g*mod_trn,dim=0)
 
-                    trn_loss += self.criterion(scores, targets_trn).item()
+                #fin_trn_loss_g /= len(loader_tr.batch_sampler)
+
+                trn_loss_g = torch.sum(exten_inp*weights,dim=1) - targets
+                fin_trn_loss_g = exten_inp*2*trn_loss_g[:,None]
+
+                fin_trn_loss_g = (sum_fin_trn_loss_g - fin_trn_loss_g)/rem_len
+
+                weight_grad = fin_trn_loss_g+ 2*rem_len*self.lam*weights +\
+                    fin_val_loss_g*ele_alphas[:,None]
+
+                #print(weight_grad[0])
+
+                exp_avg_w.mul_(beta1).add_(1.0 - beta1, weight_grad)
+                exp_avg_sq_w.mul_(beta2).addcmul_(1.0 - beta2, weight_grad, weight_grad)
+                denom = exp_avg_sq_w.sqrt().add_(main_optimizer.param_groups[0]['eps'])
+
+                bias_correction1 *= beta1
+                bias_correction2 *= beta2
+                step_size = self.lr * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
-                trn_loss/= len(loader_tr.batch_sampler)
+                #weights = weights - self.lr*(weight_grad)
+
+                '''print(self.lr)
+                print((fin_trn_loss_g+ 2*self.lam*weights +fin_val_loss_g*ele_alphas[:,None])[0])'''
+
+                #print(weights[0])
+
+                alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
+
+                exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
+                exp_avg_sq_a.mul_(beta2).addcmul_(1.0 - beta2, alpha_grad, alpha_grad)
+                denom = exp_avg_sq_a.sqrt().add_(dual_optimizer.param_groups[0]['eps'])
+                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)
+                ele_alphas[ele_alphas < 0] = 0
+                #print(ele_alphas[0])
+
+                #ele_alphas = ele_alphas + self.lr*(torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta)
+
+            val_losses = 0.
+            for batch_idx_val in list(loader_val.batch_sampler):
                     
-                constraint = 0.
-                for batch_idx in list(loader_val.batch_sampler):
-                        
-                    inputs, targets = loader_val.dataset[batch_idx]
+                inputs_val, targets_val = loader_val.dataset[batch_idx_val]
+                inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
+
+                exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0]).view(-1,1)),dim=1)
+                exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
                 
-                    val_out = self.model(inputs)
-                    constraint += self.criterion(val_out, targets).item()
+                val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
+
+                val_losses+= torch.mean(val_loss*val_loss,dim=0)
+            
+            reg = torch.sum(weights*weights,dim=1)
+
+            trn_losses = 0.
+            for batch_idx_trn in list(loader_tr.batch_sampler):
+                    
+                inputs_trn, targets_trn,_ = loader_tr.dataset[batch_idx_trn]
+                inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
+
+                exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0]).view(-1,1)),dim=1)
+                exten_trn_y = targets_trn.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                #print(exten_val_y[0])
+            
+                trn_loss = torch.matmul(exten_trn,torch.transpose(weights, 0, 1)) - exten_trn_y
                 
-                constraint /= len(loader_val.batch_sampler)
-                constraint = constraint - self.delta
-                multiplier = alphas*constraint #torch.dot(alphas,constraint)
+                trn_losses+= torch.sum(trn_loss*trn_loss,dim=0)
 
-                l = [torch.flatten(p) for p in self.model.parameters()]
-                flat = torch.cat(l)
-                l2_reg = torch.sum(flat*flat)
+            trn_loss_ind = torch.sum(exten_inp*weights,dim=1) - targets
 
-                m_values[sub_id] = trn_loss + self.lam*l2_reg*len(removed) + multiplier
+            trn_losses -= trn_loss_ind*trn_loss_ind
+            #fin_trn_loss_g /= len(loader_tr.batch_sampler)
+            #trn_loss_g = torch.sum(exten_inp*weights,dim=1) - targets
+            #fin_trn_loss_g = exten_inp*2*trn_loss_g[:,None]
+            #trn_loss = torch.sum(exten_inp*weights,dim=1) - targets
 
+            #print(torch.sum(exten_inp*weights,dim=1)[0])
+            #print((trn_loss*trn_loss)[0],self.lam*reg[0],\
+            #    ((torch.mean(val_loss*val_loss,dim=0)-ele_delta)*ele_alphas)[0])
+
+            m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]] =\
+                F_curr -(trn_losses/rem_len+ self.lam*reg*rem_len\
+                +(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)
+            #F_curr -torch.tensor(F_curr).repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0]))-
+            b_idxs +=1
+
+        #print(curr_subset[:10])
+        #print(F_curr)
+        #print(m_values[curr_subset][:10])
+        
         values,indices =m_values.topk(budget,largest=False)
 
         return list(indices.cpu())
