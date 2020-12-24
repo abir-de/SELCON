@@ -48,7 +48,7 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 5
+sub_epoch = 1 #5
 
 batch_size = 12000
 
@@ -238,7 +238,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     loader_val = DataLoader(CustomDataset(x_val, y_val,transform=None),shuffle=False,\
         batch_size=batch_size)
 
-    loader_tst = DataLoader(CustomDataset(x_val, y_val,transform=None),shuffle=False,\
+    loader_tst = DataLoader(CustomDataset(x_tst, y_tst,transform=None),shuffle=False,\
         batch_size=batch_size)
     
     main_model.eval()
@@ -337,7 +337,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     loader_val = DataLoader(CustomDataset(x_val, y_val,transform=None),shuffle=False,\
         batch_size=batch_size)
 
-    loader_tst = DataLoader(CustomDataset(x_val, y_val,transform=None),shuffle=False,\
+    loader_tst = DataLoader(CustomDataset(x_tst, y_tst,transform=None),shuffle=False,\
         batch_size=batch_size)
 
     stop_epoch = num_epochs
