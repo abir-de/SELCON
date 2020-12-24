@@ -603,7 +603,8 @@ class FindSubset_Vect(object):
             exp_avg_a = torch.zeros_like(ele_alphas)
             exp_avg_sq_a = torch.zeros_like(ele_alphas)
 
-            exten_inp = torch.cat((inputs,torch.ones(inputs.shape[0]).view(-1,1)),dim=1)
+            exten_inp = torch.cat((inputs,torch.ones(inputs.shape[0],device=self.device).view(-1,1))\
+                ,dim=1)
 
             #print(exten_inp.shape)
             #print(inputs[0],idxs[0])#,exten_inp)
@@ -632,7 +633,7 @@ class FindSubset_Vect(object):
                     inputs_val, targets_val = loader_val.dataset[batch_idx_val]
                     inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
-                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0]).view(-1,1)),dim=1)
+                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device).view(-1,1)),dim=1)
                     #print(exten_val.shape)
 
                     exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
@@ -687,7 +688,7 @@ class FindSubset_Vect(object):
                 inputs_val, targets_val = loader_val.dataset[batch_idx_val]
                 inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
-                exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0]).view(-1,1)),dim=1)
+                exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device).view(-1,1)),dim=1)
                 exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
                 
                 val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
@@ -799,7 +800,7 @@ class FindSubset_Vect(object):
             exp_avg_a = torch.zeros_like(ele_alphas)
             exp_avg_sq_a = torch.zeros_like(ele_alphas)
 
-            exten_inp = torch.cat((inputs,torch.ones(inputs.shape[0]).view(-1,1)),dim=1)
+            exten_inp = torch.cat((inputs,torch.ones(inputs.shape[0],device=self.device).view(-1,1)),dim=1)
 
             bias_correction1 = 1.0 
             bias_correction2 = 1.0 
@@ -813,7 +814,7 @@ class FindSubset_Vect(object):
                     inputs_val, targets_val = loader_val.dataset[batch_idx_val]
                     inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
-                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0]).view(-1,1)),dim=1)
+                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device).view(-1,1)),dim=1)
                     #print(exten_val.shape)
 
                     exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
@@ -836,7 +837,7 @@ class FindSubset_Vect(object):
                     inputs_trn, targets_trn,_ = loader_tr.dataset[batch_idx_trn]
                     inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
 
-                    exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0]).view(-1,1)),dim=1)
+                    exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0],device=self.device).view(-1,1)),dim=1)
                     exten_trn_y = targets_trn.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
                     #print(exten_val_y[0])
                 
@@ -892,7 +893,7 @@ class FindSubset_Vect(object):
                 inputs_val, targets_val = loader_val.dataset[batch_idx_val]
                 inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
-                exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0]).view(-1,1)),dim=1)
+                exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device).view(-1,1)),dim=1)
                 exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
                 
                 val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
@@ -907,7 +908,7 @@ class FindSubset_Vect(object):
                 inputs_trn, targets_trn,_ = loader_tr.dataset[batch_idx_trn]
                 inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
 
-                exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0]).view(-1,1)),dim=1)
+                exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0],device=self.device).view(-1,1)),dim=1)
                 exten_trn_y = targets_trn.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
                 #print(exten_val_y[0])
             
