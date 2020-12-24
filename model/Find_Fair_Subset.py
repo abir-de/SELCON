@@ -583,8 +583,6 @@ class FindSubset_Vect(object):
         loader_tr = DataLoader(CustomDataset_WithId(self.x_trn, self.y_trn,\
             transform=None),shuffle=False,batch_size=self.batch_size)
 
-        ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn.shape[0])).to(self.device)
-
         beta1,beta2 = main_optimizer.param_groups[0]['betas']
         #main_optimizer.param_groups[0]['eps']
 
@@ -592,6 +590,8 @@ class FindSubset_Vect(object):
 
             inputs, targets, idxs = loader_tr.dataset[batch_idx]
             inputs, targets = inputs.to(self.device), targets.to(self.device)
+
+            ele_delta = self.delta.repeat(targets.shape[0]).to(self.device)
         
             weights = flat.repeat(targets.shape[0], 1)
             ele_alphas = alphas.repeat(targets.shape[0]).to(self.device)
@@ -777,7 +777,7 @@ class FindSubset_Vect(object):
         loader_tr = DataLoader(CustomDataset_WithId(self.x_trn[curr_subset], self.y_trn[curr_subset],\
             transform=None),shuffle=False,batch_size=self.batch_size)
 
-        ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0])).to(self.device)
+        #ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0])).to(self.device)
 
         beta1,beta2 = main_optimizer.param_groups[0]['betas']
         #main_optimizer.param_groups[0]['eps']
@@ -790,6 +790,8 @@ class FindSubset_Vect(object):
 
             inputs, targets, _ = loader_tr.dataset[batch_idx]
             inputs, targets = inputs.to(self.device), targets.to(self.device)
+
+            ele_delta = self.delta.repeat(targets.shape[0]).to(self.device)
         
             weights = flat.repeat(targets.shape[0], 1)
             ele_alphas = alphas.repeat(targets.shape[0]).to(self.device)

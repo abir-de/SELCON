@@ -48,7 +48,7 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 1 #5
+sub_epoch = 5
 
 batch_size = 12000
 
@@ -219,10 +219,10 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         else:
             lr_count = 0
 
-        if abs(prev_loss - temp_loss) <= 1e-5 and stop_count >= 10:
+        if abs(prev_loss - temp_loss) <= 1e-3 and stop_count >= 10:
             print(i)
             break 
-        elif abs(prev_loss - temp_loss) <= 1e-5:
+        elif abs(prev_loss - temp_loss) <= 1e-3:
             stop_count += 1
         else:
             stop_count = 0
