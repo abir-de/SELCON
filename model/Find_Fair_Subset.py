@@ -567,12 +567,14 @@ class FindSubset_Vect(object):
 
         print("Finishing F phi")
 
+        device_new = "cuda:2"#self.device 
+
         self.F_values = torch.zeros(len(self.x_trn),device=self.device)
         #alphas_orig = copy.deepcopy(alphas)
         #cached_state_dict = copy.deepcopy(self.model.state_dict())
 
         l = [torch.flatten(p) for p in self.model.state_dict().values()]
-        flat = torch.cat(l)
+        flat = torch.cat(l).detach().clone()
         #print(flat)
         
         #for param in self.model.parameters():
@@ -594,7 +596,7 @@ class FindSubset_Vect(object):
             ele_delta = self.delta.repeat(targets.shape[0]).to(self.device)
         
             weights = flat.repeat(targets.shape[0], 1)
-            ele_alphas = alphas.repeat(targets.shape[0]).to(self.device)
+            ele_alphas = alphas.detach().repeat(targets.shape[0]).to(self.device)
             #print(weights.shape)
 
             exp_avg_w = torch.zeros_like(weights)
@@ -626,21 +628,24 @@ class FindSubset_Vect(object):
 
             for i in range(p_epoch):
 
-                fin_val_loss_g = torch.zeros_like(weights)
-                val_losses = torch.zeros_like(ele_delta)
+                fin_val_loss_g = torch.zeros_like(weights).to(device_new)
+                #val_losses = torch.zeros_like(ele_delta).to(device_new)
                 for batch_idx_val in list(loader_val.batch_sampler):
                     
                     inputs_val, targets_val = loader_val.dataset[batch_idx_val]
                     inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
-                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device).view(-1,1)),dim=1)
+                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device)\
+                        .view(-1,1)),dim=1).to(device_new)
                     #print(exten_val.shape)
 
-                    exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                    exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,\
+                        targets.shape[0])).to(device_new)
                     #print(exten_val_y[0])
                 
-                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
-                    val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
+                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
+                         - exten_val_y 
+                    #val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
                     val_loss_g = torch.unsqueeze(2*val_loss_p, dim=2).repeat(1,1,flat.shape[0])
                     #print(val_loss_g[0][0])
 
@@ -648,7 +653,12 @@ class FindSubset_Vect(object):
                     #print(mod_val[0])
                     fin_val_loss_g += torch.mean(val_loss_g*mod_val,dim=0)
 
+                    #del exten_val,exten_val_y,val_loss_p,val_loss_g
+                    #torch.cuda.empty_cache()
+
                 fin_val_loss_g /= len(loader_val.batch_sampler)
+
+                fin_val_loss_g = fin_val_loss_g.to(self.device)
 
                 trn_loss_g = torch.sum(exten_inp*weights,dim=1) - targets
                 fin_trn_loss_g = exten_inp*2*trn_loss_g[:,None]
@@ -670,6 +680,26 @@ class FindSubset_Vect(object):
                 print((fin_trn_loss_g+ 2*self.lam*weights +fin_val_loss_g*ele_alphas[:,None])[0])'''
 
                 #print(weights[0])
+
+                val_losses = torch.zeros_like(ele_delta).to(device_new)
+                for batch_idx_val in list(loader_val.batch_sampler):
+                    
+                    inputs_val, targets_val = loader_val.dataset[batch_idx_val]
+                    inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
+
+                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device)\
+                        .view(-1,1)),dim=1).to(device_new)
+                    #print(exten_val.shape)
+
+                    exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,\
+                        targets.shape[0])).to(device_new)
+                    #print(exten_val_y[0])
+                
+                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
+                         - exten_val_y #
+                    val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
+
+                val_losses = val_losses.to(self.device)
 
                 alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
 
@@ -772,7 +802,7 @@ class FindSubset_Vect(object):
         dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
 
         l = [torch.flatten(p) for p in self.model.state_dict().values()]
-        flat = torch.cat(l)
+        flat = torch.cat(l).detach()
 
         loader_tr = DataLoader(CustomDataset_WithId(self.x_trn[curr_subset], self.y_trn[curr_subset],\
             transform=None),shuffle=False,batch_size=self.batch_size)
@@ -786,6 +816,8 @@ class FindSubset_Vect(object):
 
         b_idxs = 0
 
+        device_new = "cuda:2"
+
         for batch_idx in list(loader_tr.batch_sampler):
 
             inputs, targets, _ = loader_tr.dataset[batch_idx]
@@ -794,7 +826,7 @@ class FindSubset_Vect(object):
             ele_delta = self.delta.repeat(targets.shape[0]).to(self.device)
         
             weights = flat.repeat(targets.shape[0], 1)
-            ele_alphas = alphas.repeat(targets.shape[0]).to(self.device)
+            ele_alphas = alphas.detach().repeat(targets.shape[0]).to(self.device)
 
             exp_avg_w = torch.zeros_like(weights)
             exp_avg_sq_w = torch.zeros_like(weights)
@@ -809,21 +841,24 @@ class FindSubset_Vect(object):
 
             for i in range(p_epoch):
 
-                fin_val_loss_g = torch.zeros_like(weights,device=self.device)
-                val_losses = torch.zeros_like(ele_delta,device=self.device)
+                fin_val_loss_g = torch.zeros_like(weights).to(device_new)
+                #val_losses = torch.zeros_like(ele_delta).to(device_new)
                 for batch_idx_val in list(loader_val.batch_sampler):
                     
                     inputs_val, targets_val = loader_val.dataset[batch_idx_val]
                     inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
-                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device).view(-1,1)),dim=1)
+                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device)\
+                        .view(-1,1)),dim=1).to(device_new)
                     #print(exten_val.shape)
 
-                    exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                    exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,\
+                        targets.shape[0])).to(device_new)
                     #print(exten_val_y[0])
                 
-                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
-                    val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
+                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
+                         - exten_val_y 
+                    #val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
                     val_loss_g = torch.unsqueeze(2*val_loss_p, dim=2).repeat(1,1,flat.shape[0])
                     #print(val_loss_g[0][0])
 
@@ -831,26 +866,38 @@ class FindSubset_Vect(object):
                     #print(mod_val[0])
                     fin_val_loss_g += torch.mean(val_loss_g*mod_val,dim=0)
 
-                fin_val_loss_g /= len(loader_val.batch_sampler)
+                    del exten_val,exten_val_y,val_loss_p,val_loss_g,mod_val
+                    torch.cuda.empty_cache()
 
-                sum_fin_trn_loss_g = torch.zeros_like(weights)
+                fin_val_loss_g /= len(loader_val.batch_sampler)
+                fin_val_loss_g = fin_val_loss_g.to(self.device)
+
+                sum_fin_trn_loss_g = torch.zeros_like(weights).to(device_new)
                 for batch_idx_trn in list(loader_tr.batch_sampler):
                     
                     inputs_trn, targets_trn,_ = loader_tr.dataset[batch_idx_trn]
                     inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
 
-                    exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0],device=self.device).view(-1,1)),dim=1)
-                    exten_trn_y = targets_trn.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                    exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0]\
+                        ,device=self.device).view(-1,1)),dim=1).to(device_new)
+                    exten_trn_y = targets_trn.view(-1,1).repeat(1,min(self.batch_size,\
+                        targets.shape[0])).to(device_new)
                     #print(exten_val_y[0])
                 
-                    trn_loss_p = torch.matmul(exten_trn,torch.transpose(weights, 0, 1)) - exten_trn_y
+                    trn_loss_p = torch.matmul(exten_trn,torch.transpose(weights, 0, 1).to(device_new)) - exten_trn_y
                     sum_trn_loss_g = torch.unsqueeze(2*trn_loss_p, dim=2).repeat(1,1,flat.shape[0])
                     #print(val_loss_g[0][0])
 
                     mod_trn = torch.unsqueeze(exten_trn, dim=1).repeat(1,targets.shape[0],1)
                     sum_fin_trn_loss_g += torch.sum(sum_trn_loss_g*mod_trn,dim=0)
 
+                    #print(sum_fin_trn_loss_g.shape)
+
+                    del exten_trn,exten_trn_y,trn_loss_p,sum_trn_loss_g,mod_trn
+                    torch.cuda.empty_cache()
+
                 #fin_trn_loss_g /= len(loader_tr.batch_sampler)
+                sum_fin_trn_loss_g = sum_fin_trn_loss_g.to(self.device)
 
                 trn_loss_g = torch.sum(exten_inp*weights,dim=1) - targets
                 fin_trn_loss_g = exten_inp*2*trn_loss_g[:,None]
@@ -877,6 +924,26 @@ class FindSubset_Vect(object):
                 print((fin_trn_loss_g+ 2*self.lam*weights +fin_val_loss_g*ele_alphas[:,None])[0])'''
 
                 #print(weights[0])
+
+                val_losses = torch.zeros_like(ele_delta).to(device_new)
+                for batch_idx_val in list(loader_val.batch_sampler):
+                    
+                    inputs_val, targets_val = loader_val.dataset[batch_idx_val]
+                    inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
+
+                    exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device)\
+                        .view(-1,1)),dim=1).to(device_new)
+                    #print(exten_val.shape)
+
+                    exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,\
+                        targets.shape[0])).to(device_new)
+                    #print(exten_val_y[0])
+                
+                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
+                         - exten_val_y #
+                    val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
+
+                val_losses = val_losses.to(self.device)
 
                 alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
 

@@ -50,7 +50,7 @@ delt = float(sys.argv[7])
 
 sub_epoch = 5
 
-batch_size = 12000
+batch_size = 1000
 
 learning_rate = 0.01 #0.05 
 #change = [250,650,1250,1950,4000]#,4200]
@@ -550,6 +550,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 np.random.seed(42)
 
+rand_idxs = list(np.random.choice(N, size=bud, replace=False))
+
 starting = time.process_time() 
 sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
@@ -559,8 +561,6 @@ starting = time.process_time()
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
 print("Full with fairness training time ",ending-starting, file=logfile)
-
-rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
 starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
