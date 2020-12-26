@@ -48,9 +48,9 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 5
+sub_epoch = 1 #5
 
-batch_size = 1000
+batch_size = 12000#1000
 
 learning_rate = 0.01 #0.05 
 #change = [250,650,1250,1950,4000]#,4200]

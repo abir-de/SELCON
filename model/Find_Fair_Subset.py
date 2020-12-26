@@ -567,7 +567,7 @@ class FindSubset_Vect(object):
 
         print("Finishing F phi")
 
-        device_new = "cuda:2"#self.device 
+        device_new = self.device #"cuda:2"#self.device #
 
         self.F_values = torch.zeros(len(self.x_trn),device=self.device)
         #alphas_orig = copy.deepcopy(alphas)
@@ -643,18 +643,19 @@ class FindSubset_Vect(object):
                         targets.shape[0])).to(device_new)
                     #print(exten_val_y[0])
                 
-                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
-                         - exten_val_y 
+                    val_loss_p = 2*(torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
+                         - exten_val_y)
                     #val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
-                    val_loss_g = torch.unsqueeze(2*val_loss_p, dim=2).repeat(1,1,flat.shape[0])
+                    #val_loss_g = 2*val_loss_p.to(device_new) 
+                    #torch.unsqueeze(2*val_loss_p.to(device_new), dim=2).repeat(1,1,flat.shape[0])
                     #print(val_loss_g[0][0])
 
-                    mod_val = torch.unsqueeze(exten_val, dim=1).repeat(1,targets.shape[0],1)
+                    #mod_val = torch.unsqueeze(exten_val.to(device_new), dim=1).repeat(1,targets.shape[0],1)
                     #print(mod_val[0])
-                    fin_val_loss_g += torch.mean(val_loss_g*mod_val,dim=0)
+                    fin_val_loss_g += torch.mean(val_loss_p[:,:,None]*exten_val[:,None,:],dim=0)
 
-                    #del exten_val,exten_val_y,val_loss_p,val_loss_g
-                    #torch.cuda.empty_cache()
+                    del exten_val,exten_val_y,val_loss_p,inputs_val, targets_val #mod_val,val_loss_g,
+                    torch.cuda.empty_cache()
 
                 fin_val_loss_g /= len(loader_val.batch_sampler)
 
@@ -698,6 +699,9 @@ class FindSubset_Vect(object):
                     val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
                          - exten_val_y #
                     val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
+
+                    del exten_val,exten_val_y,val_loss_p,inputs_val, targets_val
+                    torch.cuda.empty_cache()
 
                 val_losses = val_losses.to(self.device)
 
@@ -816,7 +820,7 @@ class FindSubset_Vect(object):
 
         b_idxs = 0
 
-        device_new = "cuda:2"
+        device_new = self.device #"cuda:2" #self.device #
 
         for batch_idx in list(loader_tr.batch_sampler):
 
@@ -856,17 +860,17 @@ class FindSubset_Vect(object):
                         targets.shape[0])).to(device_new)
                     #print(exten_val_y[0])
                 
-                    val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
-                         - exten_val_y 
+                    val_loss_p = 2*(torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
+                         - exten_val_y) 
                     #val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
-                    val_loss_g = torch.unsqueeze(2*val_loss_p, dim=2).repeat(1,1,flat.shape[0])
+                    #val_loss_g = torch.unsqueeze(val_loss_p, dim=2).repeat(1,1,flat.shape[0])
                     #print(val_loss_g[0][0])
 
-                    mod_val = torch.unsqueeze(exten_val, dim=1).repeat(1,targets.shape[0],1)
+                    #mod_val = torch.unsqueeze(exten_val, dim=1).repeat(1,targets.shape[0],1)
                     #print(mod_val[0])
-                    fin_val_loss_g += torch.mean(val_loss_g*mod_val,dim=0)
+                    fin_val_loss_g += torch.mean(val_loss_p[:,:,None]*exten_val[:,None,:],dim=0)
 
-                    del exten_val,exten_val_y,val_loss_p,val_loss_g,mod_val
+                    del exten_val,exten_val_y,val_loss_p,inputs_val, targets_val #mod_val,val_loss_g,
                     torch.cuda.empty_cache()
 
                 fin_val_loss_g /= len(loader_val.batch_sampler)
@@ -884,16 +888,16 @@ class FindSubset_Vect(object):
                         targets.shape[0])).to(device_new)
                     #print(exten_val_y[0])
                 
-                    trn_loss_p = torch.matmul(exten_trn,torch.transpose(weights, 0, 1).to(device_new)) - exten_trn_y
-                    sum_trn_loss_g = torch.unsqueeze(2*trn_loss_p, dim=2).repeat(1,1,flat.shape[0])
-                    #print(val_loss_g[0][0])
+                    sum_trn_loss_p = 2*(torch.matmul(exten_trn,torch.transpose(weights, 0, 1)\
+                        .to(device_new)) - exten_trn_y)
+                    #sum_trn_loss_g = torch.unsqueeze(trn_loss_p, dim=2).repeat(1,1,flat.shape[0])
 
-                    mod_trn = torch.unsqueeze(exten_trn, dim=1).repeat(1,targets.shape[0],1)
-                    sum_fin_trn_loss_g += torch.sum(sum_trn_loss_g*mod_trn,dim=0)
+                    #mod_trn = torch.unsqueeze(exten_trn, dim=1).repeat(1,targets.shape[0],1)
+                    sum_fin_trn_loss_g += torch.sum(sum_trn_loss_p[:,:,None]*exten_trn[:,None,:],dim=0)
 
                     #print(sum_fin_trn_loss_g.shape)
 
-                    del exten_trn,exten_trn_y,trn_loss_p,sum_trn_loss_g,mod_trn
+                    del exten_trn,exten_trn_y,sum_trn_loss_p,inputs_trn, targets_trn #mod_trn,sum_trn_loss_g,
                     torch.cuda.empty_cache()
 
                 #fin_trn_loss_g /= len(loader_tr.batch_sampler)
@@ -942,6 +946,9 @@ class FindSubset_Vect(object):
                     val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
                          - exten_val_y #
                     val_losses += torch.mean(val_loss_p*val_loss_p,dim=0)
+
+                    del exten_val,exten_val_y,val_loss_p,inputs_val, targets_val
+                    torch.cuda.empty_cache()
 
                 val_losses = val_losses.to(self.device)
 
