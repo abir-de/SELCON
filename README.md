@@ -10,11 +10,11 @@ To run the code just use `python3 run_fair_subset.py`. In **run_fair_subset.py**
 
 - **Subset_Whole_Val.py** implements the Algorithm 1 in the overleaf in the function *train_model_fair*
 
-- Both *train_model_fair* and *train_model* and are capable of running different variants such as training with full, random and specific subset. This can be achieved by appropriately providing the type and ithe ntial subset.
+- Both *train_model_fair* and *train_model* and are capable of running different variants such as training with full, random and specific subset. This can be achieved by appropriately providing the type and the intial subset.
 
 - When type is *'Fair_subset'*, two function of **FindSubset_Vect** class from **model/Find_Fair_Subset.py** is invoked namely, *precompute* and *return_subset*.
 
-- *precompute* implements vectorised version of lines 2-5 in Algorithm 1 (Algorithm2) and *return_subset* implements vectorised version of lines 9-12 in Algorithm 1 (Algorithm2).
+- *precompute* implements vectorised version of lines 2-5 in Algorithm 1 (Algorithm2) and *return_subset* implements vectorised version of lines 9-12 in Algorithm 1 (Algorithm3).
 
 
 ## For CVX
