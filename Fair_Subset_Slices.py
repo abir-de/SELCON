@@ -10,10 +10,12 @@ import torch.nn as nn
 import torch.optim as optim
 
 from sklearn.model_selection import train_test_split
-from utils.custom_dataset import load_dataset_custom
+from utils.custom_dataset import load_dataset_custom,CustomDataset
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
-from model.Find_Fair_Subset import FindSubset
+from model.Find_Fair_Subset import FindSubset_Vect_Fair
+
+from torch.utils.data import DataLoader
 
 import math
 import random
@@ -44,13 +46,19 @@ fraction = float(sys.argv[3])
 num_epochs = int(sys.argv[4])
 select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
+delt = float(sys.argv[7])
 
-batch_size = 12000
+sub_epoch = 2 #5
 
-learning_rate = 0.05 #0.001#
+batch_size = 4000#1000
+
+learning_rate = 0.01 #0.05 
+
 #change = [250,650,1250,1950,4000]#,4200]
 
-all_logs_dir = './results/LR/' + data_name + '/' + str(fraction) + '/' + str(select_every)
+#all_logs_dir = './results/Slice/' + data_name + '/' + str(fraction) + '/' + str(select_every)
+all_logs_dir = './results/Slice/' + data_name+'/' + str(fraction) +\
+        '/' +str(delt) + '/' +str(select_every)
 print(all_logs_dir)
 subprocess.run(["mkdir", "-p", all_logs_dir])
 path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
@@ -116,9 +124,11 @@ N, M = x_trn.shape
 bud = int(fraction * N)
 print("Budget, fraction and N:", bud, fraction, N)#,valset[0].shape)
 
+train_batch_size = min(bud,1000)
+
 print_every = 50
 
-deltas = torch.tensor([0.1 for _ in range(len(x_val_list))])
+deltas = torch.tensor([delt for _ in range(len(x_val_list))])
 
 def train_model(func_name,start_rand_idxs=None, bud=None):
 
@@ -136,56 +146,111 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
     #main_optimizer = optim.SGD(main_model.parameters(), lr=learning_rate)
     main_optimizer = torch.optim.Adam(main_model.parameters(), lr=learning_rate)
 
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change, gamma=0.5)
+    #scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change, gamma=0.5)
+    scheduler = optim.lr_scheduler.StepLR(main_optimizer, step_size=1, gamma=0.1)
 
     if func_name == 'Random':
         print("Starting Random Run!")
     elif func_name == 'Random with Prior':
         print("Starting Random with Prior Run!")
 
-    for i in range(num_epochs):
+    idxs.sort()
+    np.random.seed(42)
+    np_sub_idxs = np.array(idxs)
+    np.random.shuffle(np_sub_idxs)
+    loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
+            transform=None),shuffle=False,batch_size=train_batch_size)
+
+    stop_count = 0
+    prev_loss = 1000
+    prev_loss2 = 1000
+    i =0
+    mul=1
+    lr_count = 0
+    while(True):
+        #for i in range(curr_epoch):#num_epochs):
         
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
-        inputs, targets = x_trn[idxs], y_trn[idxs]
-        main_optimizer.zero_grad()
-        l2_reg = 0
-        
-        scores = main_model(inputs)
-        for param in main_model.parameters():
-            l2_reg += torch.norm(param)
-        
-        loss = criterion(scores, targets) +  reg_lambda*l2_reg *len(idxs)
-        loss.backward()
+        #inputs, targets = x_trn[idxs], y_trn[idxs]
 
-        main_optimizer.step()
-        scheduler.step()
+        temp_loss = 0.
+
+        for batch_idx in list(loader_tr.batch_sampler):
+            
+            inputs, targets = loader_tr.dataset[batch_idx]
+            inputs, targets = inputs.to(device), targets.to(device)
+            main_optimizer.zero_grad()
+            l2_reg = 0
+            
+            scores = main_model(inputs)
+            for param in main_model.parameters():
+                l2_reg += torch.norm(param)
+            
+            loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(batch_idx)
+            temp_loss += loss.item()
+            loss.backward()
+
+            for p in filter(lambda p: p.grad is not None, main_model.parameters()):\
+                 p.grad.data.clamp_(min=-.1, max=.1)
+
+            main_optimizer.step()
+            #scheduler.step()
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
+            print(prev_loss,temp_loss,mul)
             #print(main_optimizer.param_groups[0]['lr'])
+
+        if abs(prev_loss - temp_loss) <= 1e-1*mul or prev_loss2 == temp_loss:
+            #print(main_optimizer.param_groups[0]['lr'])
+            lr_count += 1
+            if lr_count == 10:
+                #print(i,"Reduced")
+                print(prev_loss,temp_loss,main_optimizer.param_groups[0]['lr'])
+                scheduler.step()
+                mul/=10
+                lr_count = 0
+        else:
+            lr_count = 0
+
+        if abs(prev_loss - temp_loss) <= 1e-3 and stop_count >= 10:
+            print(i)
+            break 
+        elif abs(prev_loss - temp_loss) <= 1e-3:
+            stop_count += 1
+        else:
+            stop_count = 0
+
+        if i>=2000:
+            break
+
+        #print(temp_loss,prev_loss)
+        prev_loss2 = prev_loss
+        prev_loss = temp_loss
+        i+=1
 
     tst_accuracy = torch.zeros(len(x_tst_list))
     val_accuracy = torch.zeros(len(x_val_list))
     
     main_model.eval()
     with torch.no_grad():
-        full_trn_out = main_model(x_trn)
+        '''full_trn_out = main_model(x_trn)
         full_trn_loss = criterion(full_trn_out, y_trn)
         sub_trn_out = main_model(x_trn[idxs])
         sub_trn_loss = criterion(sub_trn_out, y_trn[idxs])
-        print("Final SubsetTrn and FullTrn Loss:", sub_trn_loss.item(),full_trn_loss.item(),file=logfile)
+        print("Final SubsetTrn and FullTrn Loss:", sub_trn_loss.item(),full_trn_loss.item(),file=logfile)'''
         
         for j in range(len(x_val_list)):
 
-            print(val_classes[j],len(x_val_list[j]))
+            #print(val_classes[j],len(x_val_list[j]))
             
             val_out = main_model(x_val_list[j])
             val_loss = criterion(val_out, y_val_list[j])
             val_accuracy[j] = val_loss            
-        print()
+        #print()
         for j in range(len(x_tst_list)):
 
-            print(tst_classes[j],len(x_tst_list[j]))
+            #print(tst_classes[j],len(x_tst_list[j]))
             
             outputs = main_model(x_tst_list[j])
             test_loss = criterion(outputs, y_tst_list[j])
@@ -195,7 +260,7 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
 
 def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
-    idxs = start_rand_idxs
+    sub_idxs = start_rand_idxs
 
     criterion = nn.MSELoss()
     '''if data_name == "census":
@@ -203,111 +268,209 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     else:'''
     main_model = RegressionNet(M)
 
+    main_model = main_model.to(device)
+
     #criterion_sum = nn.MSELoss(reduction='sum')
     
-    alphas = torch.rand_like(deltas,requires_grad=True) 
+    alphas = torch.rand_like(deltas,device=device,requires_grad=True)
+    #print(alphas)
     #alphas = torch.ones_like(deltas,requires_grad=True)
-    '''dual_optimizer = optim.SGD([{'params': main_model.parameters()},
+    '''main_optimizer = optim.SGD([{'params': main_model.parameters()},
                 {'params': alphas}], lr=learning_rate) #'''
     main_optimizer = torch.optim.Adam([
-                {'params': main_model.parameters()},
-                {'params': alphas,'lr':learning_rate}], lr=learning_rate) #{'params': alphas} #
+                {'params': main_model.parameters()}], lr=learning_rate)
+                
+    dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate) #{'params': alphas} #'''
 
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change,\
-         gamma=0.5) #[e*2 for e in change]
+    #scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change,\
+    #     gamma=0.5) #[e*2 for e in change]
+    scheduler = optim.lr_scheduler.StepLR(main_optimizer, step_size=1, gamma=0.1)
 
-    alphas.requires_grad = False
-
-    val_size = torch.zeros(len(x_val_list),dtype=torch.long)
-    for j in range(len(x_val_list)):
-        val_size[j] = len(y_val_list[j])
-
-    x_val_combined = torch.cat(x_val_list)
-    #y_val_combined = torch.cat(y_val_list)
+    #alphas.requires_grad = False
 
     #delta_extend = torch.repeat_interleave(deltas,val_size, dim=0)
 
-    if func_name == 'Full':
-        print("Starting Full with fairness Run!")
+    if func_name == 'Random':
+        print("Starting Random with fairness Run!")
     elif func_name == 'Fair_subset':
 
-        '''fsubset = FindSubset(x_trn, y_trn, x_val_combined, y_val_combined,main_model,criterion,\
-            val_size,device,delta_extend)
-        
         cached_state_dict = copy.deepcopy(main_model.state_dict())
-        clone_dict = copy.deepcopy(main_model.state_dict())
-        fsubset.precompute(clone_dict)
-        model.load_state_dict(cached_state_dict)'''
+        alpha_orig = copy.deepcopy(alphas)
+
+        fsubset = FindSubset_Vect_Fair(x_trn, y_trn, x_val_list, y_val_list,main_model,criterion,\
+            device,deltas,learning_rate,reg_lambda,batch_size)
+
+        fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
+
+        main_model.load_state_dict(cached_state_dict)
         
         print("Starting Subset of size ",fraction," with fairness Run!")
+
+    sub_idxs.sort()
+    np.random.seed(42)
+    np_sub_idxs = np.array(sub_idxs)
+    np.random.shuffle(np_sub_idxs)
+    loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
+            transform=None),shuffle=False,batch_size=train_batch_size)
+
+    stop_epoch = num_epochs
     
-    for i in range(num_epochs):
+    #for i in range(num_epochs):
+    stop_count = 0
+    prev_loss = 1000
+    prev_loss2 = 1000
+    i =0
+    mul = 1
+    lr_count = 0
+    while (True):
 
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
-        inputs, targets = x_trn[idxs], y_trn[idxs]
-        main_optimizer.zero_grad()
-        l2_reg = 0
-        
-        scores = main_model(inputs)
-        for param in main_model.parameters():
-            l2_reg += torch.norm(param)
-        
-        '''alpha_extend = torch.repeat_interleave(alphas,val_size, dim=0)
-        val_scores = main_model(x_val_combined)
-        constraint = criterion(val_scores, y_val_combined) - delta_extend
-        multiplier = torch.dot(alpha_extend,constraint)'''
+        #inputs, targets = x_trn[sub_idxs], y_trn[sub_idxs]
 
-        constraint = torch.zeros(len(x_val_list))
-        for j in range(len(x_val_list)):
+        temp_loss = 0.
+
+        for batch_idx in list(loader_tr.batch_sampler):
             
-            inputs_j, targets_j = x_val_list[j], y_val_list[j]
-            scores_j = main_model(inputs_j)
-            constraint[j] = criterion(scores_j, targets_j) - deltas[j]
+            inputs_trn, targets_trn = loader_tr.dataset[batch_idx]
+            inputs_trn, targets_trn = inputs_trn.to(device), targets_trn.to(device)
 
-        multiplier = torch.dot(alphas,constraint)
+            main_optimizer.zero_grad()
+            l2_reg = 0
+            
+            scores = main_model(inputs_trn)
+            for param in main_model.parameters():
+                l2_reg += torch.norm(param)
 
-        loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(idxs) + multiplier
-        loss.backward()
-        
-        main_optimizer.step()
-        scheduler.step()
-        #main_optimizer.param_groups[1]['lr'] = learning_rate/2
+            '''alpha_extend = torch.repeat_interleave(alphas,val_size, dim=0)
+            val_scores = main_model(x_val_combined)
+            constraint = criterion(val_scores, y_val_combined) - delta_extend
+            multiplier = torch.dot(alpha_extend,constraint)'''
+
+            constraint = torch.zeros(len(x_val_list))
+            for j in range(len(x_val_list)):
+                
+                inputs_j, targets_j = x_val_list[j], y_val_list[j]
+                scores_j = main_model(inputs_j)
+                constraint[j] = criterion(scores_j, targets_j) - deltas[j]
+
+            multiplier = torch.dot(alphas,constraint)
+
+            loss = criterion(scores, targets_trn) +  reg_lambda*l2_reg*len(batch_idx) + multiplier #
+            temp_loss += loss.item()
+            loss.backward()
+
+            # clamp gradients, just in case
+            for p in filter(lambda p: p.grad is not None, main_model.parameters()):\
+                 p.grad.data.clamp_(min=-.1, max=.1)
+
+            main_optimizer.step()
+            #scheduler.step()
+            #main_optimizer.param_groups[1]['lr'] = learning_rate/2
+            
+            '''for param in main_model.parameters():
+                param.requires_grad = False
+            alphas.requires_grad = True'''
+
+            constraint = torch.zeros(len(x_val_list))
+            for j in range(len(x_val_list)):
+                
+                inputs_j, targets_j = x_val_list[j], y_val_list[j]
+                scores_j = main_model(inputs_j)
+                constraint[j] = criterion(scores_j, targets_j) - deltas[j]
+
+            multiplier = torch.dot(-1.0*alphas,constraint)
+            
+            #print(alphas,constraint)
+            dual_optimizer.zero_grad()
+
+            #main_optimizer.state = state_orig
+            multiplier.backward()
+            dual_optimizer.step()
+            #print(main_optimizer.param_groups)
+            #scheduler.step()
+
+            alphas.requires_grad = False
+            alphas.clamp_(min=0.0)
+            alphas.requires_grad = True
+            #print(alphas)
+
+            '''for param in main_model.parameters():
+                param.requires_grad = True'''
+
+        #print(alphas,constraint)
 
         if i % print_every == 0:  # Print Training and Validation Loss
             print('Epoch:', i + 1, 'SubsetTrn', loss.item())
+            print(prev_loss,temp_loss,constraint)#,alphas)
+            #print(main_optimizer.state)#.keys())
             #print(alphas,constraint)
             #print(criterion(scores, targets) , reg_lambda*l2_reg*len(idxs) ,multiplier)
             #print(main_optimizer.param_groups)#[0]['lr'])
+
+        if ((i + 1) % select_every == 0) and func_name not in ['Full']:
+
+            cached_state_dict = copy.deepcopy(main_model.state_dict())
+            clone_dict = copy.deepcopy(cached_state_dict)
+            alpha_orig = copy.deepcopy(alphas)
+
+            if func_name == 'Fair_subset':
+
+                d_sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
+                    train_batch_size)
+
+                sub_idxs = d_sub_idxs
+                #print(d_sub_idxs[:10])
+
+                '''clone_dict = copy.deepcopy(cached_state_dict)
+                alpha_orig = copy.deepcopy(alphas)
+
+                sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
+                    train_batch_size)
+                print(sub_idxs[:10])'''
+
+                main_optimizer = torch.optim.Adam([
+                {'params': main_model.parameters()}], lr=learning_rate)
+                
+                dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
+
+            main_model.load_state_dict(cached_state_dict)
+
+        if abs(prev_loss - temp_loss) <= 1e-1*mul or prev_loss2 == temp_loss:
+            #print(main_optimizer.param_groups[0]['lr'])
+            lr_count += 1
+            if lr_count == 10:
+                #print(i,"Reduced")
+                print(prev_loss,temp_loss,constraint)
+                scheduler.step()
+                mul/=100
+                lr_count = 0
+        else:
+            lr_count = 0
+
+        '''if abs(prev_loss - temp_loss) <= 1e-5 and stop_count >= 10:
+            print(i)
+            break 
+        elif abs(prev_loss - temp_loss) <= 1e-5:
+            stop_count += 1
+        else:
+            stop_count = 0'''
+        #print(temp_loss,prev_loss)
+
+        constraint[constraint > 0] = 1000
+
+        if torch.sum(constraint).item() <= 0 and stop_count >= 10:
+            print(constraint)
+            break
+        elif torch.sum(constraint).item() <= 0:
+            stop_count += 1
+        else:
+            stop_count = 0
         
-        for param in main_model.parameters():
-            param.requires_grad = False
-        alphas.requires_grad = True
-
-        constraint = torch.zeros(len(x_val_list))
-        for j in range(len(x_val_list)):
-            
-            inputs_j, targets_j = x_val_list[j], y_val_list[j]
-            scores_j = main_model(inputs_j)
-            constraint[j] = criterion(scores_j, targets_j) - deltas[j]
-
-        multiplier = torch.dot(-1.0*alphas,constraint)
-
-        #print(alphas,constraint)
-        
-        main_optimizer.zero_grad()
-        multiplier.backward()
-        
-        main_optimizer.step()
-        #scheduler.step()
-
-        alphas.requires_grad = False
-        alphas.clamp_(min=0.0)
-        #print(alphas)
-
-        for param in main_model.parameters():
-            param.requires_grad = True
-
-        #if ((i + 1) % select_every == 0) and func_name not in ['Full']:
+        if i>=2000:
+            break
+        prev_loss2 = prev_loss
+        prev_loss = temp_loss
+        i+=1
 
     tst_accuracy = torch.zeros(len(x_tst_list))
     val_accuracy = torch.zeros(len(x_val_list))
@@ -316,11 +479,11 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     #print(alphas)
     main_model.eval()
     with torch.no_grad():
-        full_trn_out = main_model(x_trn)
+        '''full_trn_out = main_model(x_trn)
         full_trn_loss = criterion(full_trn_out, y_trn)
         sub_trn_out = main_model(x_trn[idxs])
         sub_trn_loss = criterion(sub_trn_out, y_trn[idxs])
-        print("Final SubsetTrn and FullTrn Loss:", full_trn_loss.item(), sub_trn_loss.item(),file=logfile)
+        print("Final SubsetTrn and FullTrn Loss:", full_trn_loss.item(), sub_trn_loss.item(),file=logfile)'''
         
         for j in range(len(x_val_list)):
             
@@ -337,18 +500,38 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     return [val_accuracy, val_classes, tst_accuracy, tst_classes]
 
 
+rand_idxs = list(np.random.choice(N, size=bud, replace=False))
+
+starting = time.process_time() 
+sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
+ending = time.process_time() 
+print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
+
 starting = time.process_time() 
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
-print("Full with fairness training time ",ending-starting, file=logfile)
+print("Full with Constraints training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-full = train_model('Random', np.random.choice(N, size=N, replace=False))
+rand_fair = train_model_fair('Random',rand_idxs,bud)
+ending = time.process_time() 
+print("Random with Constraints training time ",ending-starting, file=logfile)
+
+curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
+
+starting = time.process_time() 
+full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
 ending = time.process_time() 
 print("Full training time ",ending-starting, file=logfile)
 
-methods = [full,full_fair]
-methods_names=["Full","Full with Fairness"] 
+starting = time.process_time() 
+rand = train_model('Random',rand_idxs,curr_epoch)
+ending = time.process_time() 
+print("Random training time ",ending-starting, file=logfile)
+
+methods = [full_fair,rand_fair,full,rand,sub_fair] #
+methods_names= ["Full with Constraints","Random with Constraints","Full","Random","Subset with Constraints"]
+
 
 for me in range(len(methods)):
 

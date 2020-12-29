@@ -1,18 +1,22 @@
 import subprocess
+import sys
+
+if_fair = bool(sys.argv[1])
 
 datadir = '../Datasets/data/'
 #datasets = [ 'census']
-#datasets = [ 'Community_Crime']
+datasets = [ 'Community_Crime']
 #datasets = ['OnlineNewsPopularity']
 #datasets = ["German_credit"]
-datasets = ["synthetic"]
+#datasets = ["GPU_Kernel"]
+#datasets = ["synthetic"]
 #fracs =[0.1,0.2]#, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 #fracs =[ 0.5,0.6,0.7,0.8,0.9]
 fracs =[0.1]#,0.2,0.3,0.4,0.5]
 num_epochs = 1000#2500#1000
-select_every = [20]#,35,50]
+select_every = [35]#,35,50]
 reg_lambda = [0.01]
-deltas = [i/10 for i in range(10,0,-1)]
+deltas = [i/10 for i in range(10,0,-1)] #10
 
 for dset in datasets:
     for sel in select_every:
@@ -20,7 +24,10 @@ for dset in datasets:
             for r in reg_lambda:
                 for delt in deltas:
                     args = ['python3']
-                    args.append('Subset_Whole_Val.py')
+                    if if_fair:
+                        args.append('Fair_Subset_Slices.py')
+                    else:
+                        args.append('Subset_Whole_Val.py')
                     args.append(datadir + dset)
                     args.append(dset)
                     args.append(str(f))

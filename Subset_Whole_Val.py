@@ -48,9 +48,9 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 1 #5
+sub_epoch = 2 #5
 
-batch_size = 12000#1000
+batch_size = 4000#1000
 
 learning_rate = 0.01 #0.05 
 #change = [250,650,1250,1950,4000]#,4200]
@@ -316,7 +316,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         alpha_orig = copy.deepcopy(alphas)
 
         fsubset_d = FindSubset_Vect(x_trn, y_trn, x_val, y_val,main_model,criterion,\
-            device,deltas,learning_rate,reg_lambda,batch_size)
+            device,torch.min(deltas,torch.tensor(0.1)),learning_rate,reg_lambda,batch_size)
 
         fsubset_d.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
 
@@ -560,27 +560,29 @@ print("Subset of size ",fraction," with fairness training time ",ending-starting
 starting = time.process_time() 
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
-print("Full with fairness training time ",ending-starting, file=logfile)
+print("Full with Constraints training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
-print("Random with fairness training time ",ending-starting, file=logfile)
+print("Random with Constraints training time ",ending-starting, file=logfile)
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
 ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)
+print("Full training time ",ending-starting, file=logfile)'''
 
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [full_fair,rand_fair,full,rand,sub_fair]
-methods_names=["Full with Constraints","Random with Constraints","Full","Random","Subset with Constraints"]
+methods = [full_fair,rand_fair,rand,sub_fair] #[full_fair,rand_fair,full,rand,sub_fair] #
+methods_names= ["Full with Constraints","Random with Constraints","Random","Subset with Constraints"] 
+#["Full with Constraints","Random with Constraints","Full","Random","Subset with Constraints"]
+
 
 #methods = [full,rand]
 #methods_names=["Full","Random"] 

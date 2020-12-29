@@ -60,10 +60,12 @@ class CustomDataset_WithId(Dataset):
         return sample_data, label,idx #.astype('float32')
 
 ## Utility function to load datasets from libsvm datasets
-def csv_file_load(path,dim, save_data=False):
+def csv_file_load(path,dim,skip=False,save_data=False):
     data = []
     target = []
     with open(path) as fp:
+       if skip:
+           line = fp.readline()
        line = fp.readline()
        while line:
         temp = [i for i in line.strip().split(",")]
@@ -97,8 +99,9 @@ def libsvm_file_load(path,dim, save_data=False):
         temp_data = [0]*dim
         
         for i in temp[1:]:
-            ind,val = i.split(':')
-            temp_data[int(ind)-1] = float(val)
+            if len(i) > 1: 
+                ind,val = i.split(':')
+                temp_data[int(ind)-1] = float(val)
         data.append(temp_data)
         line = fp.readline()
     X_data = np.array(data,dtype=np.float32)
@@ -467,6 +470,10 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
         trn_file = os.path.join(datadir, 'mg_scale.txt')
         x_trn, y_trn  = libsvm_file_load(trn_file,6)
 
+    elif dset_name == "MSD":
+        trn_file = os.path.join(datadir, 'YearPredictionMSD')
+        x_trn, y_trn  = libsvm_file_load(trn_file,90)
+
     elif dset_name == "census":
         trn_file = os.path.join(datadir, 'adult.data')
         tst_file = os.path.join(datadir, 'adult.test')
@@ -485,6 +492,13 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
         data_dims = 122
 
         x_trn, y_trn = community_crime_load(trn_file, dim=data_dims)
+
+    elif dset_name == 'OnlineNewsPopularity':
+        trn_file = os.path.join(datadir, 'OnlineNewsPopularity.csv')
+
+        data_dims = 58
+
+        x_trn, y_trn = community_online_news(trn_file, dim=data_dims)
 
     elif dset_name == "synthetic":
 
@@ -518,8 +532,13 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
         trn_file = os.path.join(datadir, 'ablone_scle.txt')
         x_trn, y_trn  = libsvm_file_load(trn_file,8)'''
 
-    x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.15, random_state=42)
-    x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.2, random_state=42)
+    if dset_name == "MSD":
+        tst_file = os.path.join(datadir, 'YearPredictionMSD.t')
+        x_tst, y_tst  = libsvm_file_load(trn_file,90)
+        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.03, random_state=42)
+    else:
+        x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.2, random_state=42)
+        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
 
     sc = StandardScaler()
     x_trn = sc.fit_transform(x_trn)
