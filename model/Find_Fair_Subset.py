@@ -1072,7 +1072,7 @@ class FindSubset_Vect_Fair(object):
             for param in self.model.parameters():
                 l2_reg += torch.norm(param)
             
-            constraint = torch.zeros(len(self.x_val_list))
+            constraint = torch.zeros(len(self.x_val_list),device=self.device)
             for j in range(len(self.x_val_list)):
                 
                 inputs_j, targets_j = self.x_val_list[j], self.y_val_list[j]
@@ -1094,7 +1094,7 @@ class FindSubset_Vect_Fair(object):
 
             dual_optimizer.zero_grad()
 
-            constraint = torch.zeros(len(self.x_val_list))
+            constraint = torch.zeros(len(self.x_val_list),device=self.device)
             for j in range(len(self.x_val_list)):
                 
                 inputs_j, targets_j = self.x_val_list[j], self.y_val_list[j]
@@ -1320,7 +1320,7 @@ class FindSubset_Vect_Fair(object):
             for param in self.model.parameters():
                 l2_reg += torch.norm(param)
 
-            constraint = torch.zeros(len(self.x_val_list))
+            constraint = torch.zeros(len(self.x_val_list),device=self.device)
             for j in range(len(self.x_val_list)):
                 
                 inputs_j, targets_j = self.x_val_list[j], self.y_val_list[j]

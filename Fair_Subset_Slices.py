@@ -346,7 +346,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             constraint = criterion(val_scores, y_val_combined) - delta_extend
             multiplier = torch.dot(alpha_extend,constraint)'''
 
-            constraint = torch.zeros(len(x_val_list))
+            constraint = torch.zeros(len(x_val_list),device=device)
             for j in range(len(x_val_list)):
                 
                 inputs_j, targets_j = x_val_list[j], y_val_list[j]
@@ -371,7 +371,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 param.requires_grad = False
             alphas.requires_grad = True'''
 
-            constraint = torch.zeros(len(x_val_list))
+            constraint = torch.zeros(len(x_val_list),device=device)
             for j in range(len(x_val_list)):
                 
                 inputs_j, targets_j = x_val_list[j], y_val_list[j]
