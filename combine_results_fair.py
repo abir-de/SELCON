@@ -6,14 +6,15 @@ import copy
 
 data_name = sys.argv[2]
 directory = sys.argv[1]
-frac= sys.argv[3]
+no_of_slices = int(sys.argv[3])
+fraction = sys.argv[4]
 
 in_dir = [name for name in os.listdir(directory) if os.path.isdir(os.path.join(directory, name))]
 
 fractions = [ int(100*round(float(i), 2)) for i in in_dir]
 fractions, in_dir = zip(*sorted(zip(fractions, in_dir)))
 
-logfile = open(os.path.join(directory, 'combined_'+data_name+'_'+frac+'.txt'), 'w')
+logfile = open(os.path.join(directory, 'combined_'+data_name +'_'+fraction+'.txt'), 'w')
 
 selection =[]
 for di in in_dir:
@@ -35,7 +36,7 @@ for sel in selection:
     val_acc[0].append(" ")
     test_acc[0].append(" ")
 
-    for delta in range(len(in_dir)):
+    for delta in range(len(in_dir)): #1,
 
         file_path = os.path.join(directory,in_dir[delta],str(sel),data_name+'.txt')
 
@@ -65,6 +66,7 @@ for sel in selection:
                         time[delta+1].append(float(tim[-1]))
 
                     else:
+                        #print(tim)
                         if first:
                             if len(tim) == 3:
                                 val_acc[0].append(tim[0]+" "+tim[1]+" "+tim[2])
@@ -72,18 +74,35 @@ for sel in selection:
                             else:
                                 val_acc[0].append(tim[0])
                                 test_acc[0].append(tim[0])
-                        
-                        line = fp.readline()
-                        acc = [i.strip() for i in line.strip()[:-1].split("|")]
-                        val_acc[delta+1].append(float(acc[-1]))
 
-                        line = fp.readline()
-                        acc = [i.strip() for i in line.strip()[:-1].split("|")]
-                        test_acc[delta+1].append(float(acc[-1]))                    
+                        for _ in range(3):
+                            line = fp.readline()
+                        
+                        acc_list = []
+                        for sl in range(no_of_slices):
+                            line = fp.readline()
+                            acc = [i.strip() for i in line.strip()[:-1].split("|")]
+                            acc_list.append(float(acc[-1]))#float(acc[-1].split('(')[1][:-1]))
+                        
+                        val_acc[delta+1].append(max(acc_list)- min(acc_list)) #
+
+                        for _ in range(6):
+                            line = fp.readline()
+
+                        acc_list = []
+                        for sl in range(no_of_slices):
+                            line = fp.readline()
+                            #print(line)
+                            acc = [i.strip() for i in line.strip()[:-1].split("|")]
+                            acc_list.append(float(acc[-1]))#acc[-1].split('(')[1][:-1]))      
+                        #print(max(acc_list),min(acc_list),in_dir[delta])    
+                        test_acc[delta+1].append(max(acc_list)-min(acc_list)) #
 
                 line = fp.readline()
         
         first = False
+
+    #print(val_acc)
 
     if len(val_acc) > 0:
 
@@ -110,8 +129,3 @@ for sel in selection:
             for i in acc:
                 line = line + str(i)+"|" 
             print(line,file=logfile)
-
-        
-
-
-

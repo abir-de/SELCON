@@ -1,10 +1,10 @@
 import numpy as np
 import torch
-from sklearn.preprocessing import MinMaxScaler #StandardScaler
+from sklearn.preprocessing import MinMaxScaler,StandardScaler
 from sklearn import preprocessing
 
 
-def gen_rand_prior_indices(curr_size,num_cls,x_trn,y_trn,remainList=None):
+'''def gen_rand_prior_indices(curr_size,num_cls,x_trn,y_trn,remainList=None):
 
     per_sample_budget = int(curr_size/num_cls)
     if remainList is None:
@@ -30,7 +30,7 @@ def gen_rand_prior_indices(curr_size,num_cls,x_trn,y_trn,remainList=None):
     for i in indices:
         total_set.remove(i)
     indices.extend(list(np.random.choice(total_set, size= count, replace=False)))
-    return indices
+    return indices'''
 
 def get_slices(data_name, data,labels,device,buckets=None):
 

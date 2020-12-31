@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from utils.custom_dataset import load_dataset_custom,CustomDataset
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
-from model.Find_Fair_Subset import FindSubset_Vect_Fair
+from model.Find_Fair_Subset import FindSubset_Vect_Fair,FindSubset_Fair
 
 from torch.utils.data import DataLoader
 
@@ -302,6 +302,14 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
         fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
 
+        '''main_model.load_state_dict(cached_state_dict)
+        alpha_orig = copy.deepcopy(alphas)
+
+        fsubset_d = FindSubset_Fair(x_trn, y_trn, x_val_list, y_val_list,main_model,criterion,\
+            device,deltas,learning_rate,reg_lambda)
+
+        fsubset_d.precompute(int(num_epochs/4),sub_epoch,alpha_orig,batch_size)'''
+
         main_model.load_state_dict(cached_state_dict)
         
         print("Starting Subset of size ",fraction," with fairness Run!")
@@ -424,7 +432,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 '''clone_dict = copy.deepcopy(cached_state_dict)
                 alpha_orig = copy.deepcopy(alphas)
 
-                sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
+                sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
                     train_batch_size)
                 print(sub_idxs[:10])'''
 
@@ -456,12 +464,11 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             stop_count = 0'''
         #print(temp_loss,prev_loss)
 
-        constraint[constraint > 0] = 1000
 
-        if torch.sum(constraint).item() <= 0 and stop_count >= 10:
-            print(constraint)
+        if torch.sum(alphas).item() <= 0 and stop_count >= 10:
+            print(i,constraint)
             break
-        elif torch.sum(constraint).item() <= 0:
+        elif torch.sum(alphas).item() <= 0:
             stop_count += 1
         else:
             stop_count = 0
@@ -508,14 +515,14 @@ ending = time.process_time()
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
-ending = time.process_time() 
-print("Full with Constraints training time ",ending-starting, file=logfile)
-
-starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
 print("Random with Constraints training time ",ending-starting, file=logfile)
+
+starting = time.process_time() 
+full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
+ending = time.process_time() 
+print("Full with Constraints training time ",ending-starting, file=logfile)
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
@@ -542,7 +549,7 @@ for me in range(len(methods)):
     print('|Class | Error|',file=logfile)
 
     for a in range(len(x_val_list)):
-        print("|",methods[me][1][a],"|",methods[me][0][a],"|",file=logfile)
+        print("|",methods[me][1][a],"|",methods[me][0][a].item(),"|",file=logfile)
 
     print('---------------------------------------------------------------------',file=logfile)
 
@@ -553,6 +560,6 @@ for me in range(len(methods)):
     print('|Class | Error|',file=logfile)
 
     for a in range(len(x_tst_list)):
-        print("|",methods[me][3][a],"|",methods[me][2][a],"|",file=logfile)
+        print("|",methods[me][3][a],"|",methods[me][2][a].item(),"|",file=logfile)
 
     print('---------------------------------------------------------------------',file=logfile)

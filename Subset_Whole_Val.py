@@ -557,10 +557,10 @@ sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
-print("Full with Constraints training time ",ending-starting, file=logfile)
+print("Full with Constraints training time ",ending-starting, file=logfile)'''
 
 starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
@@ -579,8 +579,8 @@ rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [full_fair,rand_fair,rand,sub_fair] #[full_fair,rand_fair,full,rand,sub_fair] #
-methods_names= ["Full with Constraints","Random with Constraints","Random","Subset with Constraints"] 
+methods = [rand_fair,rand,sub_fair] #[full_fair,rand_fair,full,rand,sub_fair] #
+methods_names= ["Random with Constraints","Random","Subset with Constraints"] 
 #["Full with Constraints","Random with Constraints","Full","Random","Subset with Constraints"]
 
 
