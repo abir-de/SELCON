@@ -1872,7 +1872,12 @@ class FindSubset_Vect_Fair(object):
                 trn_loss_g = 2*(torch.sum(exten_inp*weights,dim=1) - targets)
                 fin_trn_loss_g = exten_inp*trn_loss_g[:,None]
 
+                #print(fin_trn_loss_g[:2])
+                #print(sum_fin_trn_loss_g[:2])
+
                 fin_trn_loss_g = (sum_fin_trn_loss_g - fin_trn_loss_g)/rem_len
+
+                #print(fin_trn_loss_g[:2])
 
                 weight_grad = fin_trn_loss_g + 2*rem_len*self.lam*weights +fin_val_loss_g  #*ele_alphas[:,None]
 
@@ -1891,10 +1896,11 @@ class FindSubset_Vect_Fair(object):
                 print((fin_trn_loss_g+ 2*self.lam*weights +fin_val_loss_g*ele_alphas[:,None])[0])'''
 
                 #print("weight")
-                #print(weights[0])
+                #print(weights[:2])
 
                 #print("weight grad")
-                #print(weight_grad[0])
+                #print(weight_grad[:2])
+                #print(self.lr)
 
                 #val_losses = torch.zeros_like(ele_delta).to(device_new)
                 alpha_grad = torch.zeros_like(ele_alphas).to(device_new)
@@ -1984,7 +1990,7 @@ class FindSubset_Vect_Fair(object):
 
         #print(curr_subset[:10])
         #print(F_curr)
-        print(m_values[curr_subset][:10])
+        #print(m_values[curr_subset][:10])
         
         values,indices =m_values.topk(budget,largest=False)
 

@@ -36,7 +36,7 @@ for sel in selection:
     val_acc[0].append(" ")
     test_acc[0].append(" ")
 
-    for delta in range(len(in_dir)): #1,
+    for delta in range(1,len(in_dir)): #1,
 
         file_path = os.path.join(directory,in_dir[delta],str(sel),data_name+'.txt')
 
@@ -84,7 +84,7 @@ for sel in selection:
                             acc = [i.strip() for i in line.strip()[:-1].split("|")]
                             acc_list.append(float(acc[-1]))#float(acc[-1].split('(')[1][:-1]))
                         
-                        val_acc[delta+1].append(max(acc_list)- min(acc_list)) #
+                        val_acc[delta+1].append(sum(acc_list))#max(acc_list)- min(acc_list)) #
 
                         for _ in range(6):
                             line = fp.readline()
@@ -96,7 +96,7 @@ for sel in selection:
                             acc = [i.strip() for i in line.strip()[:-1].split("|")]
                             acc_list.append(float(acc[-1]))#acc[-1].split('(')[1][:-1]))      
                         #print(max(acc_list),min(acc_list),in_dir[delta])    
-                        test_acc[delta+1].append(max(acc_list)-min(acc_list)) #
+                        test_acc[delta+1].append(sum(acc_list))#max(acc_list)-min(acc_list)) #
 
                 line = fp.readline()
         

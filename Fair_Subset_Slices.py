@@ -48,7 +48,7 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 2 #5
+sub_epoch = 3 #5
 
 batch_size = 4000#1000
 
@@ -130,6 +130,10 @@ print_every = 50
 
 deltas = torch.tensor([delt for _ in range(len(x_val_list))])
 
+def weight_reset(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        m.reset_parameters()
+
 def train_model(func_name,start_rand_idxs=None, bud=None):
 
     idxs = start_rand_idxs
@@ -140,6 +144,7 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
         main_model = LogisticNet(M)
     else:'''
     main_model = RegressionNet(M)
+    main_model.apply(weight_reset)
    
     main_model = main_model.to(device)
     #criterion_sum = nn.MSELoss(reduction='sum')
@@ -267,6 +272,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         main_model = LogisticNet(M)
     else:'''
     main_model = RegressionNet(M)
+    main_model.apply(weight_reset)
 
     main_model = main_model.to(device)
 
@@ -298,7 +304,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         alpha_orig = copy.deepcopy(alphas)
 
         fsubset = FindSubset_Vect_Fair(x_trn, y_trn, x_val_list, y_val_list,main_model,criterion,\
-            device,deltas,learning_rate,reg_lambda,batch_size)
+            device,deltas,learning_rate*5,reg_lambda,batch_size)
 
         fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
 
@@ -510,14 +516,14 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
 starting = time.process_time() 
-sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
-ending = time.process_time() 
-print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
-
-starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
 print("Random with Constraints training time ",ending-starting, file=logfile)
+
+starting = time.process_time() 
+sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
+ending = time.process_time() 
+print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
