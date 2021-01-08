@@ -23,7 +23,7 @@ for dset in datasets:
     for sel in select_every:
         for f in fracs:
             for r in reg_lambda:
-                for delt in deltas:
+                for delt in [0.1]:#deltas:
                     args = ['python3']
                     if if_fair:
                         args.append('Fair_Subset_Slices.py')

@@ -36,7 +36,7 @@ for sel in selection:
     val_acc[0].append(" ")
     test_acc[0].append(" ")
 
-    for delta in range(1,len(in_dir)): #1,
+    for delta in range(len(in_dir)): #1,
 
         file_path = os.path.join(directory,in_dir[delta],str(sel),data_name+'.txt')
 

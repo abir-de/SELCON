@@ -48,7 +48,7 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 1 #5
+sub_epoch = 3 #5
 
 batch_size = 4000#1000
 
@@ -451,7 +451,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 print(sub_idxs[:10])'''
 
                 new_ele = set(n_sub_idxs).difference(set(sub_idxs))
-                #print(len(new_ele),0.1*bud)
+                print(len(new_ele),0.1*bud)
 
                 if len(new_ele) > 0.1*bud:
                     main_optimizer = torch.optim.Adam([
@@ -460,6 +460,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                     dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
 
                     mul=1
+                    stop_count = 0
+                    lr_count = 0
 
                 sub_idxs = n_sub_idxs
 
@@ -485,8 +487,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         else:
             stop_count = 0'''
 
-        if torch.sum(alphas).item() <= 0 and stop_count >= 2: #10:
-            print(i,constraint)
+        if torch.sum(alphas).item() <= 0 and stop_count >= 10: #10:
+            print(i,sum(constraint))
             break
         elif torch.sum(alphas).item() <= 0:
             stop_count += 1
