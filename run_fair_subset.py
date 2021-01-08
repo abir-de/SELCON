@@ -5,8 +5,8 @@ if_fair = bool(sys.argv[1])
 
 datadir = '../Datasets/data/'
 #datasets = [ 'census']
-#datasets = [ 'Community_Crime']
-datasets = ['LawSchool']
+datasets = [ 'Community_Crime']
+#datasets = ['LawSchool']
 #datasets = ['OnlineNewsPopularity']
 #datasets = ["German_credit"]
 #datasets = ["GPU_Kernel"]

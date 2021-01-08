@@ -48,7 +48,7 @@ def get_slices(data_name, data,labels,device,buckets=None):
     x_val = sc.transform(x_val)
     x_tst = sc.transform(x_tst)'''
 
-    if data_name == 'Community_Crime':
+    if data_name == 'Community_Crime_old':
         protect_feature =[2,3,4,5]
 
         data_class =[]
@@ -242,14 +242,16 @@ def get_slices(data_name, data,labels,device,buckets=None):
             tst_label_slices[j] = torch.from_numpy(np.reshape(\
                 sc_l.transform(np.reshape(tst_label_slices[j],(-1,1))),(-1))).float().to(device)
     
-    elif data_name in ['census','LawSchool','German_credit']:
-
+    elif data_name in ['census','LawSchool','German_credit','Community_Crime']:
+        
         if data_name == 'census':
             protect_feature = 8 #9
         elif data_name == 'LawSchool':
             protect_feature = 0
         elif data_name == 'German_credit':
             protect_feature = 8
+        elif data_name == 'Community_Crime':
+            protect_feature = -1
 
         total_set = set(list(np.arange(len(data))))
         

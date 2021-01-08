@@ -561,6 +561,9 @@ class FindSubset_Fair(object):
             '''for param in self.model.parameters():
                 param.requires_grad = True'''
 
+            #if torch.sum(alphas).item() <= 0: 
+            #    break
+
         print("Finishing F phi")
 
         self.F_values = torch.zeros(len(self.x_trn))
@@ -627,6 +630,10 @@ class FindSubset_Fair(object):
                     for param in self.model.parameters():
                         print(param)'''
 
+                if trn_id == 129:
+                    for param in self.model.parameters():
+                        print(param)
+
                 '''for param in self.model.parameters():
                     param.requires_grad = False
                 alphas.requires_grad = True'''
@@ -645,6 +652,11 @@ class FindSubset_Fair(object):
                 multiplier.backward()
                 
                 dual_optimizer.step()
+
+                if trn_id == 129:
+                    print(constraint)
+                    print(alphas.grad)
+                    print(alphas)
 
                 alphas.requires_grad = False
                 alphas.clamp_(min=0.0)
@@ -678,7 +690,7 @@ class FindSubset_Fair(object):
             
                 self.F_values[trn_id] = loss.item()
 
-        print(self.F_values[:10])
+        #print(self.F_values[:10])
 
         print("Finishing Element wise F")
 
@@ -800,11 +812,11 @@ class FindSubset_Fair(object):
                 main_optimizer.step()
                 #scheduler.step()
 
-                if sub_id == curr_subset[0]:
+                '''if sub_id == curr_subset[0]:
                     print("weight grad")
                     for param in self.model.parameters():
                         print(param)
-                        print(param.grad)
+                        print(param.grad)'''
 
                 '''for param in self.model.parameters():
                     param.requires_grad = False
@@ -1440,7 +1452,7 @@ class FindSubset_Vect(object):
         
         values,indices =m_values.topk(budget,largest=False)
 
-        return list(indices.cpu())
+        return list(indices.cpu().numpy())
 
 class FindSubset_Vect_Fair(object):
     def __init__(self, x_trn, y_trn, x_val, y_val,model,loss,device,delta,lr,lam,batch):
@@ -1467,7 +1479,7 @@ class FindSubset_Vect_Fair(object):
         np.random.seed(42)
 
 
-    def precompute(self,f_pi_epoch,p_epoch,alphas):
+    def precompute(self,f_pi_epoch,p_epoch,alphas):#,budget):
 
         #self.model.load_state_dict(theta_init)
 
@@ -1540,8 +1552,8 @@ class FindSubset_Vect_Fair(object):
             '''for param in self.model.parameters():
                 param.requires_grad = True'''
 
-            if torch.sum(alphas).item() <= 0: 
-                break
+            #if torch.sum(alphas).item() <= 0: 
+            #    break
 
         print("Finishing F phi")
 
@@ -1646,7 +1658,7 @@ class FindSubset_Vect_Fair(object):
                 '''print(self.lr)
                 print((fin_trn_loss_g+ 2*self.lam*weights +fin_val_loss_g*ele_alphas[:,None])[0])'''
 
-                #print(weights[0])
+                #print(weights[129])
 
                 #val_losses = torch.zeros_like(targets.shape[0]).to(device_new)
                 alpha_grad = torch.zeros_like(ele_alphas).to(device_new)
@@ -1667,7 +1679,7 @@ class FindSubset_Vect_Fair(object):
                     val_loss_p = torch.matmul(exten_val,torch.transpose(weights, 0, 1).to(device_new))\
                          - exten_val_y #
                     
-                    #print(torch.mean(val_loss_p*val_loss_p,dim=0).shape)#,torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta[j])
+                    #print(torch.mean(val_loss_p*val_loss_p,dim=0)[129])#,torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta[j])
                     alpha_grad[:,j] = torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta[j]
 
                     del exten_val,exten_val_y,val_loss_p,inputs_val, targets_val
@@ -1675,18 +1687,19 @@ class FindSubset_Vect_Fair(object):
 
                     #val_losses = val_losses.to(self.device)
                     #alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
-                #print(alpha_grad[0])
+                #print(alpha_grad[129])
                 exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
                 exp_avg_sq_a.mul_(beta2).addcmul_(1.0 - beta2, alpha_grad, alpha_grad)
                 denom = exp_avg_sq_a.sqrt().add_(dual_optimizer.param_groups[0]['eps'])
                 #print(ele_alphas[0])
                 ele_alphas.addcdiv_(step_size, exp_avg_a, denom)
-                #print(ele_alphas[0])
-                ele_alphas[ele_alphas < 0] = 0
+                #print(ele_alphas[129])
+                ele_alphas[ele_alphas < 0] = 0.
                 #print(ele_alphas[0])
 
                 #ele_alphas = ele_alphas + self.lr*(torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta)
 
+            #print(ele_alphas[ele_alphas < 0])
             val_losses = 0.
             for j in range(len(self.x_val_list)):
                     
@@ -1699,6 +1712,7 @@ class FindSubset_Vect_Fair(object):
                 val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
 
                 val_losses += (torch.mean(val_loss*val_loss,dim=0)-ele_delta[j])*ele_alphas[:,j]
+                #print(val_losses[129])
             
             reg = torch.sum(weights*weights,dim=1)
             trn_loss = torch.sum(exten_inp*weights,dim=1) - targets
@@ -1709,10 +1723,23 @@ class FindSubset_Vect_Fair(object):
 
             self.F_values[idxs] = trn_loss*trn_loss+ self.lam*reg + val_losses
                 #(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas
+        
+        '''temp = trn_loss*trn_loss
+        print(temp[temp <0])  
+        temp = self.lam*reg
+        print(temp[temp <0]) 
+        temp = val_losses
+        print(temp[temp <0])
+        print(len(self.F_values[self.F_values < 0]))''' 
 
-        #print(self.F_values[:10])
+        idxs = torch.nonzero(self.F_values < 0)   
+        print(idxs)
+        #print(ele_alphas[idxs])
 
+        #values,indices =self.F_values.topk(budget,largest=False)
         print("Finishing Element wise F")
+
+        #return list(indices.cpu().numpy())
 
 
     def return_subset(self,theta_init,p_epoch,curr_subset,alphas,budget,batch):
@@ -1981,11 +2008,21 @@ class FindSubset_Vect_Fair(object):
             #    ((torch.mean(val_loss*val_loss,dim=0)-ele_delta)*ele_alphas)[0])
 
             #print(trn_losses[0]/rem_len, self.lam*reg[0]*rem_len, val_losses[0])
+            #print(m_values[m_values<0])
+            #print(m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]][:10])
             m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]] =\
                 F_curr -(trn_losses/rem_len+ self.lam*reg*rem_len + val_losses)
                 #+(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)
             #F_curr -torch.tensor(F_curr).repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0]))-
             #print(b_idxs,self.batch_size)
+            '''print(m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]][:10])
+            print(m_values[m_values<0])
+            print(m_values[m_values>F_curr])
+            temp = F_curr - (trn_losses/rem_len+ self.lam*reg*rem_len + val_losses) 
+            temp[temp < 0] = 1
+            temp[temp > 0] = 0 
+            print(torch.sum(temp))'''
+            
             b_idxs +=1
 
         #print(curr_subset[:10])
@@ -1994,7 +2031,15 @@ class FindSubset_Vect_Fair(object):
         
         values,indices =m_values.topk(budget,largest=False)
 
-        return list(indices.cpu())
+        '''temp = m_values[indices]
+        temp[temp < 0] = 1
+        temp[temp > 0] = 0 
+        print(torch.sum(temp))
+        #print(m_values[indices][:10])
+
+        print(set(indices).intersection(set(curr_subset)))'''
+
+        return list(indices.cpu().numpy())
 
 
 

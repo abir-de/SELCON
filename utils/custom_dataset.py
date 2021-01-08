@@ -132,6 +132,51 @@ def clean_lawschool_full(path):
     #a = df['race']
     return df.to_numpy(), y.to_numpy()
 
+def majority_pop(a):
+    """
+    Identify the main ethnicity group of each community
+    """
+    B = "racepctblack"
+    W = "racePctWhite"
+    A = "racePctAsian"
+    H = "racePctHisp"
+    races = [B, W, A, H]
+    maj = a.apply(pd.Series.idxmax, axis=1)
+    return maj
+
+def clean_communities_full(path):
+    """
+    Extract black and white dominant communities; 
+    sub_size : number of communities for each group
+    """
+    df = pd.read_csv(path)
+    df = df.fillna(0)
+    B = "racepctblack"
+    W = "racePctWhite"
+    A = "racePctAsian"
+    H = "racePctHisp"
+    sens_features = [2, 3, 4, 5]
+    df_sens = df.iloc[:, sens_features]
+
+    # creating labels using crime rate
+    Y = df['ViolentCrimesPerPop']
+    df = df.drop('ViolentCrimesPerPop', 1)
+
+    maj = majority_pop(df_sens)
+
+    # remap the values of maj
+    a = maj.map({B : 0, W : 1, A : 2, H : 3})
+   
+    df['race'] = a
+    df = df.drop(H, 1)
+    df = df.drop(B, 1)
+    df = df.drop(W, 1)
+    df = df.drop(A, 1)
+
+    #print(df.head())
+
+    return df.to_numpy(), Y.to_numpy()
+
 def german_load(path,dim, save_data=False):
 
     data = []
@@ -371,11 +416,11 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
         return fullset, data_dims #, valset, testset, 
 
     elif dset_name == "Community_Crime":
-        trn_file = os.path.join(datadir, 'communities.data')
+        '''trn_file = os.path.join(datadir, 'communities.data')
 
         data_dims = 122
 
-        x_trn, y_trn = community_crime_load(trn_file, dim=data_dims)
+        x_trn, y_trn = community_crime_load(trn_file, dim=data_dims)'''
 
         #x_trn = preprocessing.normalize(x_trn)
         
@@ -385,6 +430,10 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
         x_trn = sc.fit_transform(x_trn)
         x_val = sc.transform(x_val)
         x_tst = sc.transform(x_tst)'''
+
+        x_trn, y_trn = clean_communities_full(os.path.join(datadir, 'communities.csv'))
+
+        #print(x_trn.shape[1])
 
         if isnumpy:
             fullset = (x_trn, y_trn)
@@ -396,7 +445,7 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
             #valset = CustomDataset(x_val, y_val)
             #testset = CustomDataset(x_tst, y_tst)
 
-        return fullset, data_dims # valset, testset,
+        return fullset, x_trn.shape[1] # valset, testset,
 
     elif dset_name == 'OnlineNewsPopularity':
         trn_file = os.path.join(datadir, 'OnlineNewsPopularity.csv')
@@ -418,7 +467,7 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
         else:
             fullset = CustomDataset(x_trn, y_trn)
 
-        return fullset, data_dims # valset, testset,
+        return fullset, data_dims  # valset, testset,
 
     elif dset_name == 'LawSchool':
 

@@ -48,7 +48,7 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 3 #5
+sub_epoch = 1 #5
 
 batch_size = 4000#1000
 
@@ -131,8 +131,10 @@ print_every = 50
 deltas = torch.tensor([delt for _ in range(len(x_val_list))])
 
 def weight_reset(m):
-    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        m.reset_parameters()
+    torch.manual_seed(42)
+    if type(m) == nn.Linear:
+        torch.nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.01)
 
 def train_model(func_name,start_rand_idxs=None, bud=None):
 
@@ -296,16 +298,22 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
     #delta_extend = torch.repeat_interleave(deltas,val_size, dim=0)
 
+    #for param in main_model.parameters():
+    #    print(param)
+
     if func_name == 'Random':
         print("Starting Random with fairness Run!")
     elif func_name == 'Fair_subset':
+
+        print("Starting Subset selection with fairness Run!")
 
         cached_state_dict = copy.deepcopy(main_model.state_dict())
         alpha_orig = copy.deepcopy(alphas)
 
         fsubset = FindSubset_Vect_Fair(x_trn, y_trn, x_val_list, y_val_list,main_model,criterion,\
-            device,deltas,learning_rate*5,reg_lambda,batch_size)
+            device,deltas,learning_rate,reg_lambda,batch_size) #*5
 
+        #sub_idxs = fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig,bud)
         fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
 
         '''main_model.load_state_dict(cached_state_dict)
@@ -429,11 +437,11 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             if func_name == 'Fair_subset':
 
-                d_sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
+                n_sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
                     train_batch_size)
-
-                sub_idxs = d_sub_idxs
-                #print(d_sub_idxs[:10])
+                
+                #print(sub_idxs[:10])
+                #print(n_sub_idxs[:10])
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
                 alpha_orig = copy.deepcopy(alphas)
@@ -442,10 +450,18 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                     train_batch_size)
                 print(sub_idxs[:10])'''
 
-                main_optimizer = torch.optim.Adam([
-                {'params': main_model.parameters()}], lr=learning_rate)
-                
-                dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
+                new_ele = set(n_sub_idxs).difference(set(sub_idxs))
+                #print(len(new_ele),0.1*bud)
+
+                if len(new_ele) > 0.1*bud:
+                    main_optimizer = torch.optim.Adam([
+                    {'params': main_model.parameters()}], lr=learning_rate)
+                    
+                    dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
+
+                    mul=1
+
+                sub_idxs = n_sub_idxs
 
             main_model.load_state_dict(cached_state_dict)
 
@@ -453,34 +469,34 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             #print(main_optimizer.param_groups[0]['lr'])
             lr_count += 1
             if lr_count == 10:
-                #print(i,"Reduced")
-                print(prev_loss,temp_loss,constraint)
+                print(i,"Reduced",mul)
+                #print(prev_loss,temp_loss,alphas)
                 scheduler.step()
-                mul/=100
+                mul/=10
                 lr_count = 0
         else:
             lr_count = 0
-
-        '''if abs(prev_loss - temp_loss) <= 1e-5 and stop_count >= 10:
+        
+        '''if abs(prev_loss - temp_loss) <= 1e-3 and stop_count >= 10:
             print(i)
             break 
-        elif abs(prev_loss - temp_loss) <= 1e-5:
+        elif abs(prev_loss - temp_loss) <= 1e-3:
             stop_count += 1
         else:
             stop_count = 0'''
-        #print(temp_loss,prev_loss)
 
-
-        if torch.sum(alphas).item() <= 0 and stop_count >= 10:
+        if torch.sum(alphas).item() <= 0 and stop_count >= 2: #10:
             print(i,constraint)
             break
         elif torch.sum(alphas).item() <= 0:
             stop_count += 1
         else:
             stop_count = 0
-        
+
         if i>=2000:
             break
+
+        #print(temp_loss,prev_loss)
         prev_loss2 = prev_loss
         prev_loss = temp_loss
         i+=1
