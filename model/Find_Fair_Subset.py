@@ -1700,7 +1700,7 @@ class FindSubset_Vect_Fair(object):
                 #ele_alphas = ele_alphas + self.lr*(torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta)
 
             #print(ele_alphas[ele_alphas < 0])
-            val_losses = 0.
+            val_losses = torch.zeros(targets.shape[0],device=self.device)
             for j in range(len(self.x_val_list)):
                     
                 inputs_val, targets_val = self.x_val_list[j], self.y_val_list[j]
@@ -1714,6 +1714,7 @@ class FindSubset_Vect_Fair(object):
                 val_losses += (torch.mean(val_loss*val_loss,dim=0)-ele_delta[j])*ele_alphas[:,j]
                 #print(val_losses[129])
             
+            print(val_losses.shape)
             reg = torch.sum(weights*weights,dim=1)
             trn_loss = torch.sum(exten_inp*weights,dim=1) - targets
 
@@ -1965,7 +1966,7 @@ class FindSubset_Vect_Fair(object):
 
                 #ele_alphas = ele_alphas + self.lr*(torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta)
 
-            val_losses = 0.
+            val_losses = torch.zeros(targets.shape[0],device=self.device)
             for j in range(len(self.x_val_list)):
                     
                 inputs_val, targets_val = self.x_val_list[j], self.y_val_list[j]
@@ -1981,7 +1982,7 @@ class FindSubset_Vect_Fair(object):
             
             reg = torch.sum(weights*weights,dim=1)
 
-            trn_losses = 0.
+            trn_losses = torch.zeros(targets.shape[0],device=self.device)
             for batch_idx_trn in list(loader_tr.batch_sampler):
                     
                 inputs_trn, targets_trn,_ = loader_tr.dataset[batch_idx_trn]
