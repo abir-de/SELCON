@@ -1494,8 +1494,8 @@ class FindSubset_Vect_Fair(object):
         main_optimizer = torch.optim.Adam([
                 {'params': self.model.parameters()}], lr=self.lr)
                 
-        #dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
-        dual_optimizer = torch.optim.SGD([{'params': alphas}], lr=self.dual_lr)
+        dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
+        #dual_optimizer = torch.optim.SGD([{'params': alphas}], lr=self.dual_lr)
 
         print("starting Pre compute")
         #alphas = torch.rand_like(self.delta,requires_grad=True) 
@@ -1694,13 +1694,13 @@ class FindSubset_Vect_Fair(object):
                     #val_losses = val_losses.to(self.device)
                     #alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
                 #print(alpha_grad[129])
-                '''exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
+                exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
                 exp_avg_sq_a.mul_(beta2).addcmul_(1.0 - beta2, alpha_grad, alpha_grad)
                 denom = exp_avg_sq_a.sqrt().add_(dual_optimizer.param_groups[0]['eps'])
                 #print(ele_alphas[0])
-                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)'''
+                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)
                 
-                ele_alphas = ele_alphas + self.dual_lr*(alpha_grad)
+                #ele_alphas = ele_alphas + self.dual_lr*(alpha_grad)
                 ele_alphas[ele_alphas < 0] = 0.
                 #print(ele_alphas[0])
 
@@ -1965,12 +1965,12 @@ class FindSubset_Vect_Fair(object):
                 #val_losses = val_losses.to(self.device)
                 #alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
 
-                '''exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
+                exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
                 exp_avg_sq_a.mul_(beta2).addcmul_(1.0 - beta2, alpha_grad, alpha_grad)
                 denom = exp_avg_sq_a.sqrt().add_(dual_optimizer.param_groups[0]['eps'])
-                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)'''
+                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)
 
-                ele_alphas = ele_alphas + self.dual_lr*(alpha_grad)
+                #ele_alphas = ele_alphas + self.dual_lr*(alpha_grad)
                 ele_alphas[ele_alphas < 0] = 0
                 #print("alpha values")
                 #print(ele_alphas[0])

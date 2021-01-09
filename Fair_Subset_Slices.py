@@ -288,9 +288,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     main_optimizer = torch.optim.Adam([
                 {'params': main_model.parameters()}], lr=learning_rate)
                 
-    #dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate) #{'params': alphas} #'''
+    dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate) #{'params': alphas} #'''
 
-    dual_optimizer = torch.optim.SGD([{'params': alphas}], lr=0.1)
+    #dual_optimizer = torch.optim.SGD([{'params': alphas}], lr=0.1)
 
     #scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change,\
     #     gamma=0.5) #[e*2 for e in change]
