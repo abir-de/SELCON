@@ -288,7 +288,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     main_optimizer = torch.optim.Adam([
                 {'params': main_model.parameters()}], lr=learning_rate)
                 
-    dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate) #{'params': alphas} #'''
+    #dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate) #{'params': alphas} #'''
+
+    dual_optimizer = torch.optim.SGD([{'params': alphas}], lr=0.1)
 
     #scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change,\
     #     gamma=0.5) #[e*2 for e in change]
@@ -462,7 +464,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                     mul=1
                     stop_count = 0
                     lr_count = 0
-
+                
                 sub_idxs = n_sub_idxs
 
             main_model.load_state_dict(cached_state_dict)
@@ -488,9 +490,10 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             stop_count = 0'''
 
         if torch.sum(alphas).item() <= 0 and stop_count >= 10: #10:
-            print(i,sum(constraint))
+            print(i,constraint)
             break
         elif torch.sum(alphas).item() <= 0:
+            #print(alphas,constraint,stop_count)
             stop_count += 1
         else:
             stop_count = 0

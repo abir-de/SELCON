@@ -733,10 +733,14 @@ class FindSubset_Fair(object):
 
             #print(F_curr)
 
-            l2_reg = 0
+            '''l2_reg = 0
             
             for param in self.model.parameters():
-                l2_reg += torch.norm(param)
+                l2_reg += torch.norm(param)'''
+
+            l = [torch.flatten(p) for p in self.model.parameters()]
+            flat = torch.cat(l)
+            l2_reg = torch.sum(flat*flat)
 
             constraint = torch.zeros(len(self.x_val_list),device=self.device)
             for j in range(len(self.x_val_list)):
@@ -1470,6 +1474,7 @@ class FindSubset_Vect_Fair(object):
 
         self.delta = delta
         self.lr = lr
+        self.dual_lr = 0.1
         self.lam = lam
         #self.optimizer = optimizer
         self.batch_size = batch
@@ -1489,7 +1494,8 @@ class FindSubset_Vect_Fair(object):
         main_optimizer = torch.optim.Adam([
                 {'params': self.model.parameters()}], lr=self.lr)
                 
-        dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
+        #dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
+        dual_optimizer = torch.optim.SGD([{'params': alphas}], lr=self.dual_lr)
 
         print("starting Pre compute")
         #alphas = torch.rand_like(self.delta,requires_grad=True) 
@@ -1688,12 +1694,13 @@ class FindSubset_Vect_Fair(object):
                     #val_losses = val_losses.to(self.device)
                     #alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
                 #print(alpha_grad[129])
-                exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
+                '''exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
                 exp_avg_sq_a.mul_(beta2).addcmul_(1.0 - beta2, alpha_grad, alpha_grad)
                 denom = exp_avg_sq_a.sqrt().add_(dual_optimizer.param_groups[0]['eps'])
                 #print(ele_alphas[0])
-                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)
-                #print(ele_alphas[129])
+                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)'''
+                
+                ele_alphas = ele_alphas + self.dual_lr*(alpha_grad)
                 ele_alphas[ele_alphas < 0] = 0.
                 #print(ele_alphas[0])
 
@@ -1714,7 +1721,7 @@ class FindSubset_Vect_Fair(object):
                 val_losses += (torch.mean(val_loss*val_loss,dim=0)-ele_delta[j])*ele_alphas[:,j]
                 #print(val_losses[129])
             
-            print(val_losses.shape)
+            #print(ele_alphas[ele_alphas>0])
             reg = torch.sum(weights*weights,dim=1)
             trn_loss = torch.sum(exten_inp*weights,dim=1) - targets
 
@@ -1734,7 +1741,7 @@ class FindSubset_Vect_Fair(object):
         print(len(self.F_values[self.F_values < 0]))''' 
 
         idxs = torch.nonzero(self.F_values < 0)   
-        print(idxs)
+        print(idxs,len(idxs))
         #print(ele_alphas[idxs])
 
         #values,indices =self.F_values.topk(budget,largest=False)
@@ -1777,15 +1784,17 @@ class FindSubset_Vect_Fair(object):
                 scores = self.model(inputs)
                 #print(self.criterion(scores, targets).item())
 
-                F_curr += self.criterion(scores, targets).item() 
+                F_curr += (self.criterion(scores, targets).item())*len(batch_idx) 
 
-            F_curr /= len(loader_tr.batch_sampler)
-            #print(F_curr)
+            F_curr /= len(curr_subset)
 
-            l2_reg = 0
-            
+            '''l2_reg = 0
             for param in self.model.parameters():
-                l2_reg += torch.norm(param)
+                l2_reg += torch.norm(param)'''
+
+            l = [torch.flatten(p) for p in self.model.parameters()]
+            flat = torch.cat(l)
+            l2_reg = torch.sum(flat*flat)
 
             constraint = torch.zeros(len(self.x_val_list),device=self.device)
             for j in range(len(self.x_val_list)):
@@ -1956,10 +1965,12 @@ class FindSubset_Vect_Fair(object):
                 #val_losses = val_losses.to(self.device)
                 #alpha_grad = val_losses/len(loader_val.batch_sampler)-ele_delta
 
-                exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
+                '''exp_avg_a.mul_(beta1).add_(1.0 - beta1, alpha_grad)
                 exp_avg_sq_a.mul_(beta2).addcmul_(1.0 - beta2, alpha_grad, alpha_grad)
                 denom = exp_avg_sq_a.sqrt().add_(dual_optimizer.param_groups[0]['eps'])
-                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)
+                ele_alphas.addcdiv_(step_size, exp_avg_a, denom)'''
+
+                ele_alphas = ele_alphas + self.dual_lr*(alpha_grad)
                 ele_alphas[ele_alphas < 0] = 0
                 #print("alpha values")
                 #print(ele_alphas[0])
@@ -2028,9 +2039,13 @@ class FindSubset_Vect_Fair(object):
 
         #print(curr_subset[:10])
         #print(F_curr)
+        #print((trn_losses/rem_len+ self.lam*reg*rem_len + val_losses)[:10])
         #print(m_values[curr_subset][:10])
         
         values,indices =m_values.topk(budget,largest=False)
+
+        #print(indices[:10])
+        #print(m_values[indices][:10])
 
         '''temp = m_values[indices]
         temp[temp < 0] = 1
