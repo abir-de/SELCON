@@ -630,10 +630,6 @@ class FindSubset_Fair(object):
                     for param in self.model.parameters():
                         print(param)'''
 
-                if trn_id == 129:
-                    for param in self.model.parameters():
-                        print(param)
-
                 '''for param in self.model.parameters():
                     param.requires_grad = False
                 alphas.requires_grad = True'''
@@ -653,10 +649,10 @@ class FindSubset_Fair(object):
                 
                 dual_optimizer.step()
 
-                if trn_id == 129:
+                '''if trn_id == 129:
                     print(constraint)
                     print(alphas.grad)
-                    print(alphas)
+                    print(alphas)'''
 
                 alphas.requires_grad = False
                 alphas.clamp_(min=0.0)
@@ -816,15 +812,16 @@ class FindSubset_Fair(object):
                 main_optimizer.step()
                 #scheduler.step()
 
-                '''if sub_id == curr_subset[0]:
+                if sub_id in [curr_subset[0],curr_subset[1]]:
                     print("weight grad")
                     for param in self.model.parameters():
                         print(param)
-                        print(param.grad)'''
+                        print(param.grad)
 
                 '''for param in self.model.parameters():
                     param.requires_grad = False
                 alphas.requires_grad = True'''
+
 
                 dual_optimizer.zero_grad()
 
@@ -846,12 +843,15 @@ class FindSubset_Fair(object):
                 alphas.requires_grad = True
                 #print(alphas)
                 
-                if sub_id == curr_subset[0]:
+                '''if sub_id == curr_subset[0]:
                     print("alpha values")
-                    print(alphas)
+                    print(alphas)'''
 
                 '''for param in self.model.parameters():
                     param.requires_grad = True'''
+
+            if sub_id not in [curr_subset[0],curr_subset[1]]:
+                break
 
             with torch.no_grad():
 
@@ -888,7 +888,7 @@ class FindSubset_Fair(object):
 
         #print(curr_subset[:10])
         #print(F_curr)
-        print(m_values[curr_subset][:10])
+        #print(m_values[curr_subset][:10])
 
         values,indices =m_values.topk(budget,largest=False)
 
@@ -1521,18 +1521,21 @@ class FindSubset_Vect_Fair(object):
                 scores_j = self.model(inputs_j)
                 constraint[j] = self.criterion(scores_j, targets_j) - self.delta[j]
 
-            multiplier = torch.dot(alphas,constraint)
+            multiplier = torch.dot(alphas,torch.max(constraint,torch.zeros_like(constraint)))
 
             loss = multiplier
-            self.F_phi = loss.item()
+            #self.F_phi = loss.item()
             loss.backward()
+
+            for p in filter(lambda p: p.grad is not None, self.model.parameters()):\
+                 p.grad.data.clamp_(min=-.1, max=.1)
             
             main_optimizer.step()
             #scheduler.step()
             
-            '''for param in self.model.parameters():
-                param.requires_grad = False
-            alphas.requires_grad = True'''
+            #for param in self.model.parameters():
+            #    param.requires_grad = False
+            #alphas.requires_grad = True
 
             dual_optimizer.zero_grad()
 
@@ -1550,20 +1553,29 @@ class FindSubset_Vect_Fair(object):
 
             #print(i,alphas)
 
+            for p in filter(lambda p: p.grad is not None, alphas):\
+                 p.grad.data.clamp_(min=-.1, max=.1)
+
             alphas.requires_grad = False
             alphas.clamp_(min=0.0)
             alphas.requires_grad = True
             #print(alphas)
 
-            '''for param in self.model.parameters():
-                param.requires_grad = True'''
+            #for param in self.model.parameters():
+            #    param.requires_grad = True
 
             #if torch.sum(alphas).item() <= 0: 
             #    break
+            if loss.item() <= 0.:
+                break
 
         print("Finishing F phi")
 
+        if loss.item() <= 0.:
+            alphas = torch.zeros_like(alphas)
+
         #print(alphas)
+        #print(loss.item())
 
         device_new = self.device #"cuda:2"#self.device #
 
@@ -1656,7 +1668,7 @@ class FindSubset_Vect_Fair(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = self.lr * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr/10000) * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -1752,45 +1764,141 @@ class FindSubset_Vect_Fair(object):
 
     def return_subset(self,theta_init,p_epoch,curr_subset,alphas,budget,batch):
 
-        m_values = self.F_values.detach().clone() #torch.zeros(len(self.x_trn))
-
-        #print(m_values[curr_subset][:10])
+        torch.set_printoptions(precision=10)
+        
+        m_values = self.F_values.detach().clone() 
         
         self.model.load_state_dict(theta_init)
 
-        #print(theta_init)
-        #print(curr_subset[:10])
-
-        '''main_optimizer = torch.optim.Adam([
-                {'params': self.model.parameters()}], lr=self.lr)
-                
-        dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)'''
+        l = [torch.flatten(p) for p in self.model.state_dict().values()]
+        flat_orig = torch.cat(l).detach()
 
         loader_tr = DataLoader(CustomDataset_WithId(self.x_trn[curr_subset], self.y_trn[curr_subset],\
             transform=None),shuffle=False,batch_size=batch)
 
-        #loader_val = DataLoader(CustomDataset(self.x_val, self.y_val,transform=None),\
-        #    shuffle=False,batch_size=batch)    
+        sum_error = torch.nn.MSELoss(reduction='sum')      
+
+        '''
+        main_optimizer = torch.optim.Adam([
+                {'params': self.model.parameters()}], lr=self.lr/100)
+                
+        dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
+        
+        for i in range(min(p_epoch,3)):
+
+            loss = 0.
+            for batch_idx in list(loader_tr.batch_sampler):
+                
+                inputs_trn, targets_trn,_ = loader_tr.dataset[batch_idx]
+                inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
+
+                main_optimizer.zero_grad()
+                
+                scores = self.model(inputs_trn)
+
+                l = [torch.flatten(p) for p in self.model.parameters()]
+                flat = torch.cat(l)
+                l2_reg = torch.sum(flat*flat)
+
+                constraint = torch.zeros(len(self.x_val_list),device=self.device)
+                for j in range(len(self.x_val_list)):
+                    
+                    inputs_j, targets_j = self.x_val_list[j], self.y_val_list[j]
+                    scores_j = self.model(inputs_j)
+                    constraint[j] = self.criterion(scores_j, targets_j) - self.delta[j]
+
+                multiplier = torch.dot(alphas,torch.max(constraint,torch.zeros_like(constraint)))
+
+                loss += (self.criterion(scores, targets_trn) + self.lam*l2_reg*len(batch_idx)\
+                     + multiplier) #
+            loss.backward()
+
+            #print("hi",i)
+            #for param in self.model.parameters():   
+            #    print(param.dtype)
+            #    print(param.grad.dtype)
+
+            # clamp gradients, just in case
+            for p in filter(lambda p: p.grad is not None, self.model.parameters()):\
+                p.grad.data.clamp_(min=-.1, max=.1)
+
+            main_optimizer.step()
+
+            constraint = torch.zeros(len(self.x_val_list),device=self.device)
+            for j in range(len(self.x_val_list)):
+                
+                inputs_j, targets_j = self.x_val_list[j], self.y_val_list[j]
+                scores_j = self.model(inputs_j)
+                constraint[j] = self.criterion(scores_j, targets_j) - self.delta[j]
+
+            multiplier = torch.dot(-1.0*alphas,constraint)
+            
+            dual_optimizer.zero_grad()
+
+            multiplier.backward()
+            dual_optimizer.step()
+
+            # clamp gradients, just in case
+            for p in filter(lambda p: p.grad is not None, alphas):\
+                    p.grad.data.clamp_(min=-.1, max=.1)
+
+            alphas.requires_grad = False
+            alphas.clamp_(min=0.0)
+            alphas.requires_grad = True
+
+        alphas.requires_grad = False
+        alphas = alphas*((constraint >0).float())
+        alphas.requires_grad = True'''
 
         with torch.no_grad():
 
             F_curr = 0.
+
+            #for p in self.model.parameters():
+            #    print(p)
 
             for batch_idx in list(loader_tr.batch_sampler):
             
                 inputs, targets, _ = loader_tr.dataset[batch_idx]
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
 
-                scores = self.model(inputs)
+                #scores = self.model(inputs)
                 #print(self.criterion(scores, targets).item())
 
-                F_curr += (self.criterion(scores, targets).item())*len(batch_idx) 
+                '''l = [torch.flatten(p) for p in self.model.parameters()]
+                flat = torch.cat(l)'''
 
-            F_curr /= len(curr_subset)
+                scores = torch.matmul(inputs,flat_orig[:-1].view(-1,1))
 
-            '''l2_reg = 0
-            for param in self.model.parameters():
-                l2_reg += torch.norm(param)'''
+                scores = scores.view(-1) + flat_orig[-1]
+
+                #print(scores.shape,targets.shape)
+
+                error = scores - targets
+
+                #F_curr += (self.criterion(scores, targets).item())*len(batch_idx) 
+                F_curr += torch.sum(error*error)#sum_error(scores, targets).item()
+                
+                #print(inputs[:10])
+                
+                #print(scores[:10])
+
+                #temp = torch.matmul(inputs,flat_orig[:-1].view(-1,1))
+                #print(flat_orig.shape)(flat_orig[:-1]).view(-1,1)),0,1)
+                #print(temp[:10].view(-1))
+                #print(flat_orig[-1])
+
+                #error = scores - targets
+                #F_curr += torch.sum(error*error)
+
+                
+            #F_curr /= len(curr_subset)
+
+            print(F_curr,end=',')
+
+            #l2_reg = 0
+            #for param in self.model.parameters():
+            #   l2_reg += torch.norm(param)
 
             l = [torch.flatten(p) for p in self.model.parameters()]
             flat = torch.cat(l)
@@ -1807,16 +1915,88 @@ class FindSubset_Vect_Fair(object):
 
             F_curr += (self.lam*l2_reg*len(curr_subset) + multiplier).item()
 
+            print(self.lam*l2_reg*len(curr_subset), multiplier)
+        
+        #print(flat*flat)
+        #print(flat)
+        
         #print(F_curr)
+        #print(alphas)
+        #print(constraint)
 
-        main_optimizer = torch.optim.Adam([{'params': self.model.parameters()}], lr=self.lr)
-        dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
+        '''loader_tr = DataLoader(CustomDataset_WithId(self.x_trn[curr_subset[1:]],\
+            self.y_trn[curr_subset[1:]],transform=None),shuffle=False,batch_size=self.batch_size)
 
-        l = [torch.flatten(p) for p in self.model.state_dict().values()]
-        flat = torch.cat(l).detach()
+        for i in range(2*p_epoch):
 
-        loader_tr = DataLoader(CustomDataset_WithId(self.x_trn[curr_subset], self.y_trn[curr_subset],\
-            transform=None),shuffle=False,batch_size=self.batch_size)
+            loss = 0.
+            for batch_idx in list(loader_tr.batch_sampler):
+                
+                inputs_trn, targets_trn,_ = loader_tr.dataset[batch_idx]
+                inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
+
+                main_optimizer.zero_grad()
+                
+                scores = self.model(inputs_trn)
+
+                l = [torch.flatten(p) for p in self.model.parameters()]
+                flat = torch.cat(l)
+                l2_reg = torch.sum(flat*flat)
+
+                constraint = torch.zeros(len(self.x_val_list),device=self.device)
+                for j in range(len(self.x_val_list)):
+                    
+                    inputs_j, targets_j = self.x_val_list[j], self.y_val_list[j]
+                    scores_j = self.model(inputs_j)
+                    constraint[j] = self.criterion(scores_j, targets_j) - self.delta[j]
+
+                multiplier = torch.dot(alphas,torch.max(constraint,torch.zeros_like(constraint)))
+
+                loss += (self.criterion(scores, targets_trn) + self.lam*l2_reg*len(batch_idx)\
+                     + multiplier) #
+            loss.backward()
+
+            print(loss)
+
+            #print("hi",i)
+            #for param in self.model.parameters():   
+            #    print(param.dtype)
+            #    print(param.grad.dtype)
+
+            # clamp gradients, just in case
+            for p in filter(lambda p: p.grad is not None, self.model.parameters()):\
+                p.grad.data.clamp_(min=-.1, max=.1)
+
+            main_optimizer.step()
+
+            constraint = torch.zeros(len(self.x_val_list),device=self.device)
+            for j in range(len(self.x_val_list)):
+                
+                inputs_j, targets_j = self.x_val_list[j], self.y_val_list[j]
+                scores_j = self.model(inputs_j)
+                constraint[j] = self.criterion(scores_j, targets_j) - self.delta[j]
+
+            multiplier = torch.dot(-1.0*alphas,constraint)
+            
+            dual_optimizer.zero_grad()
+
+            multiplier.backward()
+            dual_optimizer.step()
+
+            # clamp gradients, just in case
+            for p in filter(lambda p: p.grad is not None, alphas):\
+                    p.grad.data.clamp_(min=-.1, max=.1)
+
+            alphas.requires_grad = False
+            alphas.clamp_(min=0.0)
+            alphas.requires_grad = True
+
+        alphas.requires_grad = False
+        alphas = alphas*((constraint >0).float())
+        alphas.requires_grad = True'''
+
+        main_optimizer = torch.optim.Adam([{'params': self.model.parameters()}], lr=self.lr/10000)
+        dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr/100)
 
         #ele_delta = self.delta.repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0])).to(self.device)
 
@@ -1836,10 +2016,16 @@ class FindSubset_Vect_Fair(object):
             inputs, targets = inputs.to(self.device), targets.to(self.device)
 
             ele_delta = self.delta.to(self.device)#.repeat(targets.shape[0]).to(self.device)
-        
-            weights = flat.repeat(targets.shape[0], 1)
-            ele_alphas = alphas.detach().view(1,-1).repeat(targets.shape[0],1).to(self.device)
+            
+            #print(flat_orig.view(1,-1))
+            weights = flat_orig.view(1,-1).repeat(targets.shape[0], 1)
+            #flat_orig.view(1,-1).repeat(targets.shape[0], 1)
+
+            #print(weights[:2])
             #print(weights.shape)
+
+            ele_alphas = alphas.detach().view(1,-1).repeat(targets.shape[0],1).to(self.device)
+            #print(weights.dtype)#.shape)
 
             exp_avg_w = torch.zeros_like(weights)
             exp_avg_sq_w = torch.zeros_like(weights)
@@ -1918,14 +2104,18 @@ class FindSubset_Vect_Fair(object):
 
                 weight_grad = fin_trn_loss_g + 2*rem_len*self.lam*weights +fin_val_loss_g  #*ele_alphas[:,None]
 
+                #print(weight_grad[:2])
+                
                 exp_avg_w.mul_(beta1).add_(1.0 - beta1, weight_grad)
                 exp_avg_sq_w.mul_(beta2).addcmul_(1.0 - beta2, weight_grad, weight_grad)
                 denom = exp_avg_sq_w.sqrt().add_(main_optimizer.param_groups[0]['eps'])
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = self.lr * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = main_optimizer.param_groups[0]['lr'] * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
+                
+                #print(weights[:3])
                 
                 #weights = weights - self.lr*(weight_grad)
 
@@ -1978,6 +2168,7 @@ class FindSubset_Vect_Fair(object):
                 #ele_alphas = ele_alphas + self.lr*(torch.mean(val_loss_p*val_loss_p,dim=0)-ele_delta)
 
             val_losses = torch.zeros(targets.shape[0],device=self.device)
+            #ele_alphas = ele_alphas*((alpha_grad >0).float())
             for j in range(len(self.x_val_list)):
                     
                 inputs_val, targets_val = self.x_val_list[j], self.y_val_list[j]
@@ -1989,9 +2180,12 @@ class FindSubset_Vect_Fair(object):
                 val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
 
                 val_losses += (torch.mean(val_loss*val_loss,dim=0)-ele_delta[j])*ele_alphas[:,j]
+                #print(ele_alphas[:,j][0],val_losses[0])
                 #torch.mean(val_loss*val_loss,dim=0)
             
             reg = torch.sum(weights*weights,dim=1)
+            #print((weights*weights)[0])
+            #print(torch.sum((weights*weights)[0]))
 
             trn_losses = torch.zeros(targets.shape[0],device=self.device)
             for batch_idx_trn in list(loader_tr.batch_sampler):
@@ -2000,48 +2194,84 @@ class FindSubset_Vect_Fair(object):
                 inputs_trn, targets_trn = inputs_trn.to(self.device), targets_trn.to(self.device)
 
                 exten_trn = torch.cat((inputs_trn,torch.ones(inputs_trn.shape[0],device=self.device).view(-1,1)),dim=1)
-                exten_trn_y = targets_trn.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
-                #print(exten_val_y[0])
+                #exten_trn = inputs_trn
+                exten_trn_y = (targets_trn).view(-1,1).repeat(1,targets.shape[0]) #-weights[:,-1]
+                #print(exten_trn_y.shape)
+                #print(exten_trn[0])
+
+                #print(weights[0])
+                #print(weights[-3:])
+
+                #print(torch.dot(exten_trn[0],weights[0]))
+                #print(torch.dot(exten_trn[0],weights[-1]))
+
+                #print(torch.dot(exten_trn[1],weights[0]))
+                #print(torch.dot(exten_trn[1],weights[-1]))
+
+                '''print(exten_trn)
+                for j in range(10):
+                    #print(exten_trn[j])
+                    #print(torch.dot(exten_trn[j],flat_orig))
+                    #print(flat_orig[-1]*exten_trn[j][-1])
+                    print(torch.dot(exten_trn[j,:],weights[0,:]))#[0,:-1]))#+flat_orig[-1])#weights[0]))
+                    #print()'''
             
-                trn_loss = torch.matmul(exten_trn,torch.transpose(weights, 0, 1)) - exten_trn_y
+                trn_loss = torch.matmul(exten_trn,weights.T)- exten_trn_y #[:,:-1]
+
+                #torch.transpose(weights[:,:-1], 0, 1)
+                #torch.round(*10e5)/10e5
+
+                #print(exten_trn.shape,weights.shape)
+                #print( ((trn_loss+exten_trn_y)[:,0])[:10])
+                #print(exten_trn_y[:2])
+                #print(trn_loss[:2])
+                #print(trn_loss[:,0][:10])#+exten_trn_y[:2])
                 
                 trn_losses+= torch.sum(trn_loss*trn_loss,dim=0)
 
             trn_loss_ind = torch.sum(exten_inp*weights,dim=1) - targets
 
             trn_losses -= trn_loss_ind*trn_loss_ind
-            #fin_trn_loss_g /= len(loader_tr.batch_sampler)
-            #trn_loss_g = torch.sum(exten_inp*weights,dim=1) - targets
-            #fin_trn_loss_g = exten_inp*2*trn_loss_g[:,None]
-            #trn_loss = torch.sum(exten_inp*weights,dim=1) - targets
+            print(torch.norm(weights[0]))
 
-            #print(torch.sum(exten_inp*weights,dim=1)[0])
-            #print((trn_loss*trn_loss)[0],self.lam*reg[0],\
-            #    ((torch.mean(val_loss*val_loss,dim=0)-ele_delta)*ele_alphas)[0])
+            if b_idxs == 0:
+                print(F_curr)
+                print((trn_losses)[:10],(self.lam*reg*rem_len)[:10],(val_losses)[:10])
+           
+            abs_value = F_curr - (trn_losses + self.lam*reg*rem_len + val_losses)
 
-            #print(trn_losses[0]/rem_len, self.lam*reg[0]*rem_len, val_losses[0])
-            #print(m_values[m_values<0])
-            #print(m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]][:10])
-            m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]] =\
-                F_curr -(trn_losses/rem_len+ self.lam*reg*rem_len + val_losses)
-                #+(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)
-            #F_curr -torch.tensor(F_curr).repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0]))-
-            #print(b_idxs,self.batch_size)
-            '''print(m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]][:10])
-            print(m_values[m_values<0])
-            print(m_values[m_values>F_curr])
-            temp = F_curr - (trn_losses/rem_len+ self.lam*reg*rem_len + val_losses) 
-            temp[temp < 0] = 1
-            temp[temp > 0] = 0 
-            print(torch.sum(temp))'''
+            if b_idxs == 0:
+
+                print(abs_value[:5])
+                print(self.lam*reg[:5] + (trn_loss_ind*trn_loss_ind)[:5])
+            #print(abs_value[-5:])
+
+            #abs_value[abs_value < 0] = max(self.F_values) - abs_value[abs_value < 0]
+
             
+            #abs_value[(abs_value<0).nonzero().view(-1)] = 
+
+            #m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]] =\
+            #    torch.max(self.F_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]],abs_value)
+            
+            
+            '''pos_ind = (abs_value >= 0).nonzero().view(-1)
+
+            if len(pos_ind) > 0:
+                m_values[np.array(curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size])\
+                    [pos_ind]] = abs_value [pos_ind]'''
+
+            m_values[np.array(curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size])] = \
+                abs_value
+
             b_idxs +=1
 
         #print(curr_subset[:10])
         #print(F_curr)
         #print((trn_losses/rem_len+ self.lam*reg*rem_len + val_losses)[:10])
         #print(m_values[curr_subset][:10])
-        
+        #print(m_values[:10])
+
         values,indices =m_values.topk(budget,largest=False)
 
         #print(indices[:10])

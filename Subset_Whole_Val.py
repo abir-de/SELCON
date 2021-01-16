@@ -482,6 +482,13 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 
                 dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
 
+                sub_idxs.sort()
+                np.random.seed(42)
+                np_sub_idxs = np.array(sub_idxs)
+                np.random.shuffle(np_sub_idxs)
+                loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
+                        transform=None),shuffle=False,batch_size=train_batch_size)
+
             main_model.load_state_dict(cached_state_dict)
 
         if abs(prev_loss - temp_loss) <= 1e-1*mul or prev_loss2 == temp_loss:

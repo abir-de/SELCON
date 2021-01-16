@@ -43,6 +43,7 @@ for sel in selection:
         if not os.path.exists(file_path):
             continue
 
+        print(file_path)
         with open(file_path) as fp:
             
             time[delta+1].append(float(in_dir[delta]))
