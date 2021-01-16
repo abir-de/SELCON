@@ -1112,7 +1112,7 @@ class FindSubset_Vect(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = self.lr * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr/10000) * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -1202,7 +1202,9 @@ class FindSubset_Vect(object):
             transform=None),shuffle=False,batch_size=batch)
 
         loader_val = DataLoader(CustomDataset(self.x_val, self.y_val,transform=None),\
-            shuffle=False,batch_size=batch)    
+            shuffle=False,batch_size=batch)  
+
+        sum_error = torch.nn.MSELoss(reduction='sum')       
 
         with torch.no_grad():
 
@@ -1216,9 +1218,9 @@ class FindSubset_Vect(object):
                 scores = self.model(inputs)
                 #print(self.criterion(scores, targets).item())
 
-                F_curr += self.criterion(scores, targets).item() 
+                F_curr += sum_error(scores, targets).item() 
 
-            F_curr /= len(loader_tr.batch_sampler)
+            #F_curr /= len(loader_tr.batch_sampler)
             #print(F_curr)
 
             l2_reg = 0
@@ -1359,7 +1361,7 @@ class FindSubset_Vect(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = self.lr * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr/10000)* math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -1435,24 +1437,12 @@ class FindSubset_Vect(object):
             trn_loss_ind = torch.sum(exten_inp*weights,dim=1) - targets
 
             trn_losses -= trn_loss_ind*trn_loss_ind
-            #fin_trn_loss_g /= len(loader_tr.batch_sampler)
-            #trn_loss_g = torch.sum(exten_inp*weights,dim=1) - targets
-            #fin_trn_loss_g = exten_inp*2*trn_loss_g[:,None]
-            #trn_loss = torch.sum(exten_inp*weights,dim=1) - targets
-
-            #print(torch.sum(exten_inp*weights,dim=1)[0])
-            #print((trn_loss*trn_loss)[0],self.lam*reg[0],\
-            #    ((torch.mean(val_loss*val_loss,dim=0)-ele_delta)*ele_alphas)[0])
-
+            
             m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]] =\
-                F_curr -(trn_losses/rem_len+ self.lam*reg*rem_len\
-                +(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)
-            #F_curr -torch.tensor(F_curr).repeat(min(self.batch_size,self.y_trn[curr_subset].shape[0]))-
+                F_curr -(trn_losses + self.lam*reg*rem_len\
+                +(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas) #/rem_len
+            
             b_idxs +=1
-
-        #print(curr_subset[:10])
-        #print(F_curr)
-        #print(m_values[curr_subset][:10])
         
         values,indices =m_values.topk(budget,largest=False)
 

@@ -467,7 +467,6 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
                     train_batch_size)
 
-                sub_idxs = d_sub_idxs
                 #print(d_sub_idxs[:10])
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
@@ -477,10 +476,20 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                     train_batch_size)
                 print(sub_idxs[:10])'''
 
-                main_optimizer = torch.optim.Adam([
-                {'params': main_model.parameters()}], lr=learning_rate)
+                '''new_ele = set(n_sub_idxs).difference(set(sub_idxs))
+                print(len(new_ele),0.1*bud)
+
+                if len(new_ele) > 0.1*bud:
+                    main_optimizer = torch.optim.Adam([
+                    {'params': main_model.parameters()}], lr=learning_rate)
+                    
+                    dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
+
+                    mul=1
+                    stop_count = 0
+                    lr_count = 0'''
                 
-                dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
+                sub_idxs = d_sub_idxs
 
                 sub_idxs.sort()
                 np.random.seed(42)
@@ -503,22 +512,32 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         else:
             lr_count = 0
 
-        '''if abs(prev_loss - temp_loss) <= 1e-5 and stop_count >= 10:
-            print(i)
+         if abs(prev_loss - temp_loss) <= 1*mul or abs(temp_loss - prev_loss2) <= 1*mul:
+            #print(main_optimizer.param_groups[0]['lr'])
+            #print('lr',i)
+            lr_count += 1
+            if lr_count == 10:
+                print(i,"Reduced",mul)
+                #print(prev_loss,temp_loss,alphas)
+                scheduler.step()
+                mul/=10
+                lr_count = 0
+        else:
+            lr_count = 0
+        
+        if (abs(prev_loss - temp_loss) <= 1e-5 or abs(temp_loss - prev_loss2) <= 1e-5) and\
+             stop_count >= 10:
+            print(i,prev_loss,temp_loss,constraint)
             break 
-        elif abs(prev_loss - temp_loss) <= 1e-5:
+        elif abs(prev_loss - temp_loss) <= 1e-5 or abs(temp_loss - prev_loss2) <= 1e-5:
+            #print(prev_loss,temp_loss)
             stop_count += 1
         else:
-            stop_count = 0'''
-        #print(temp_loss,prev_loss)
-
-        if constraint.item() <= 0 and i >= 200:
-            break
-        elif i>=2000:
-            break
+            stop_count = 0
+        
         prev_loss2 = prev_loss
         prev_loss = temp_loss
-        i+=1
+        i +=1
     
     #print(constraint)
     #print(alphas)
