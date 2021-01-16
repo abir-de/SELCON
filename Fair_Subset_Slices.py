@@ -603,8 +603,8 @@ rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [full_fair,rand_fair,full,rand,sub_fair] #
-methods_names= ["Full with Constraints","Random with Constraints","Full","Random","Subset with Constraints"]
+methods = [rand_fair,sub_fair,full_fair,full,rand] #
+methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Full","Random"]
 
 
 for me in range(len(methods)):

@@ -136,6 +136,12 @@ print_every = 50
 
 deltas = torch.tensor(delt) #torch.tensor([0.1 for _ in range(len(x_val_list))])
 
+def weight_reset(m):
+    torch.manual_seed(42)
+    if type(m) == nn.Linear:
+        torch.nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.01)
+
 def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
     idxs = start_rand_idxs
@@ -285,6 +291,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         main_model = LogisticNet(M)
     else:'''
     main_model = RegressionNet(M)
+    main_model.apply(weight_reset)
 
     main_model = main_model.to(device)
 
@@ -512,7 +519,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         else:
             lr_count = 0
 
-         if abs(prev_loss - temp_loss) <= 1*mul or abs(temp_loss - prev_loss2) <= 1*mul:
+        if abs(prev_loss - temp_loss) <= 1*mul or abs(temp_loss - prev_loss2) <= 1*mul:
             #print(main_optimizer.param_groups[0]['lr'])
             #print('lr',i)
             lr_count += 1
@@ -583,10 +590,10 @@ sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
-print("Full with Constraints training time ",ending-starting, file=logfile)'''
+print("Full with Constraints training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
@@ -595,19 +602,18 @@ print("Random with Constraints training time ",ending-starting, file=logfile)
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
 ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)'''
+print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [rand_fair,rand,sub_fair] #[full_fair,rand_fair,full,rand,sub_fair] #
-methods_names= ["Random with Constraints","Random","Subset with Constraints"] 
-#["Full with Constraints","Random with Constraints","Full","Random","Subset with Constraints"]
+methods = [rand_fair,sub_fair,full_fair,full,rand] #
+methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Full","Random"]
 
 
 #methods = [full,rand]
