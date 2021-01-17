@@ -483,18 +483,19 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                     train_batch_size)
                 print(sub_idxs[:10])'''
 
-                '''new_ele = set(n_sub_idxs).difference(set(sub_idxs))
+                new_ele = set(d_sub_idxs).difference(set(sub_idxs))
                 print(len(new_ele),0.1*bud)
 
                 if len(new_ele) > 0.1*bud:
                     main_optimizer = torch.optim.Adam([
-                    {'params': main_model.parameters()}], lr=learning_rate)
+                    {'params': main_model.parameters()}], lr=max(main_optimizer.param_groups[0]['lr'],\
+                        0.001))
                     
                     dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
 
                     mul=1
                     stop_count = 0
-                    lr_count = 0'''
+                    lr_count = 0
                 
                 sub_idxs = d_sub_idxs
 
@@ -591,9 +592,9 @@ ending = time.process_time()
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
+#full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
-print("Full with Constraints training time ",ending-starting, file=logfile)
+#print("Full with Constraints training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
@@ -603,21 +604,17 @@ print("Random with Constraints training time ",ending-starting, file=logfile)
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
 starting = time.process_time() 
-full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
+#full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
 ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)
+#print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [rand_fair,sub_fair,full_fair,full,rand] #
-methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Full","Random"]
-
-
-#methods = [full,rand]
-#methods_names=["Full","Random"] 
+methods = [rand_fair,sub_fair,rand] #full_fair,full,
+methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full",
 
 
 for me in range(len(methods)):

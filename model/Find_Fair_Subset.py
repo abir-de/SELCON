@@ -1438,12 +1438,21 @@ class FindSubset_Vect(object):
 
             trn_losses -= trn_loss_ind*trn_loss_ind
             
-            m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]] =\
+            '''m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]] =\
                 F_curr -(trn_losses + self.lam*reg*rem_len\
-                +(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas) #/rem_len
+                +(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas) #/rem_len'''
+
+            abs_value = F_curr - (trn_losses + self.lam*reg*rem_len + val_losses)
+
+            neg_ind = ((abs_value + 1e-4) < 0).nonzero().view(-1)
             
+            abs_value [neg_ind] = torch.max(self.F_values)
+
+            m_values[np.array(curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size])] = \
+                abs_value
+
             b_idxs +=1
-        
+
         values,indices =m_values.topk(budget,largest=False)
 
         return list(indices.cpu().numpy())
@@ -1884,7 +1893,7 @@ class FindSubset_Vect_Fair(object):
                 
             #F_curr /= len(curr_subset)
 
-            print(F_curr,end=',')
+            #print(F_curr,end=',')
 
             #l2_reg = 0
             #for param in self.model.parameters():
@@ -1905,7 +1914,7 @@ class FindSubset_Vect_Fair(object):
 
             F_curr += (self.lam*l2_reg*len(curr_subset) + multiplier).item()
 
-            print(self.lam*l2_reg*len(curr_subset), multiplier)
+            #print(self.lam*l2_reg*len(curr_subset), multiplier)
         
         #print(flat*flat)
         #print(flat)
@@ -2222,18 +2231,18 @@ class FindSubset_Vect_Fair(object):
             trn_loss_ind = torch.sum(exten_inp*weights,dim=1) - targets
 
             trn_losses -= trn_loss_ind*trn_loss_ind
-            print(torch.norm(weights[0]))
+            #print(torch.norm(weights[0]))
 
-            if b_idxs == 0:
+            '''if b_idxs == 0:
                 print(F_curr)
-                print((trn_losses)[:10],(self.lam*reg*rem_len)[:10],(val_losses)[:10])
+                print((trn_losses)[:10],(self.lam*reg*rem_len)[:10],(val_losses)[:10])'''
            
             abs_value = F_curr - (trn_losses + self.lam*reg*rem_len + val_losses)
 
-            if b_idxs == 0:
+            #if b_idxs == 0:
 
-                print(abs_value[:5])
-                print(self.lam*reg[:5] + (trn_loss_ind*trn_loss_ind)[:5])
+                #print(abs_value[:5])
+                #print(self.lam*reg[:5] + (trn_loss_ind*trn_loss_ind)[:5])
             #print(abs_value[-5:])
 
             #abs_value[abs_value < 0] = max(self.F_values) - abs_value[abs_value < 0]
@@ -2244,12 +2253,14 @@ class FindSubset_Vect_Fair(object):
             #m_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]] =\
             #    torch.max(self.F_values[curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]],abs_value)
             
+            neg_ind = ((abs_value + 1e-4) < 0).nonzero().view(-1)
             
-            '''pos_ind = (abs_value >= 0).nonzero().view(-1)
+            abs_value [neg_ind] = torch.max(self.F_values)
 
+            '''pos_ind = (abs_value >= 0).nonzero().view(-1)
             if len(pos_ind) > 0:
-                m_values[np.array(curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size])\
-                    [pos_ind]] = abs_value [pos_ind]'''
+                m_values[torch.tensor(curr_subset[b_idxs*self.batch_size:\
+                    (b_idxs+1)*self.batch_size],device=self.device)[pos_ind]] = abs_value [pos_ind]'''
 
             m_values[np.array(curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size])] = \
                 abs_value

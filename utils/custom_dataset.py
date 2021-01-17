@@ -177,6 +177,8 @@ def clean_communities_full(path):
 
     return df.to_numpy(), Y.to_numpy()
 
+
+
 def german_load(path,dim, save_data=False):
 
     data = []
@@ -293,6 +295,81 @@ def community_crime_load(path,dim, save_data=False):
         np.save(data_np_path, X_data)
         np.save(target_np_path, Y_label)
     return (X_data, Y_label)
+
+'''def banking_load(path,dim=14, save_data=False):
+    
+    enum=enumerate(["admin.","unknown","unemployed","management","housemaid","entrepreneur","student",\
+        "blue-collar","self-employed","retired","technician","services"])
+    job = dict((j,i) for i,j in enum)
+
+    enum=enumerate(["married","divorced","single"])
+    marital_status = dict((j,i) for i,j in enum)
+
+    enum=enumerate(["unknown","secondary","primary","tertiary"])
+    education = dict((j,i) for i,j in enum)
+
+    enum=enumerate(["yes","no"])
+    yes_no = dict((j,i) for i,j in enum)
+
+    enum=enumerate(["unknown","other","failure","success"])
+    pout = dict((j,i) for i,j in enum)
+
+    data = []
+    target = []
+    with open(path) as fp:
+        line = fp.readline()
+        line = fp.readline()
+        while line:
+            temp = [i.strip() for i in line.strip().split(",")]
+
+            if '?' in temp  or len(temp) == 1:
+                line = fp.readline()
+                continue
+
+            if temp[-1].strip() == "no":
+                target.append(0) 
+            else:
+                target.append(1)
+            
+            temp_data = [0]*dim
+            count = 0
+            #print(temp)
+
+            for i in temp[:-1]:
+
+                if count == 1:
+                    temp_data[count] =  job[i.strip()]
+                elif count == 2:
+                    temp_data[count] =  marital_status[i.strip()]
+                elif count == 3:
+                    temp_data[count] =  education[i.strip()]
+                elif count in [4,6]:
+                    temp_data[count] =  yes_no[i.strip()]
+
+                elif count == 7:
+                    temp_data[count] =  relationship[i.strip()]
+                elif count == 8:
+                    temp_data[count] =  race[i.strip()]
+                elif count == 9:
+                    temp_data[count] =  sex[i.strip()]
+                elif count == 13:
+                    temp_data[count] =  native_country[i.strip()]
+                else:
+                    temp_data[count] = float(i)
+                temp_data[count] = float(temp_data[count])
+                count += 1
+            
+            data.append(temp_data)
+            line = fp.readline()
+    X_data = np.array(data, dtype=np.float32)
+    Y_label = np.array(target)
+    if save_data:
+        # Save the numpy files to the folder where they come from
+        data_np_path = path + '.data.npy'
+        target_np_path = path + '.label.npy'
+        np.save(data_np_path, X_data)
+        np.save(target_np_path, Y_label)
+    return (X_data, Y_label)'''
 
 
 def census_load(path,dim, save_data=False):

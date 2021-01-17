@@ -454,11 +454,13 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             cached_state_dict = copy.deepcopy(main_model.state_dict())
             clone_dict = copy.deepcopy(cached_state_dict)
-            alpha_orig = copy.deepcopy(alphas)
             
-            alpha_orig.requires_grad = False
-            alpha_orig = alpha_orig*((constraint >0).float())
-            alpha_orig.requires_grad = True
+            alphas.requires_grad = False
+            #alpha_orig = alpha_orig*((constraint >0).float())
+            alphas = alphas*((constraint >0).float())
+            alphas.requires_grad = True
+
+            alpha_orig = copy.deepcopy(alphas)
             
             if func_name == 'Fair_subset':
 
@@ -471,8 +473,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                     batch_size) #sub_epoch
                 
                 #print(sub_idxs[:10])
-                n_sub_idxs.sort()
-                print(n_sub_idxs[:10])
+                #n_sub_idxs.sort()
+                #print(n_sub_idxs[:10])
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
                 alpha_orig = copy.deepcopy(alphas)
@@ -481,19 +483,25 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                     train_batch_size)
                 print(sub_idxs[:10])'''
 
-                '''new_ele = set(n_sub_idxs).difference(set(sub_idxs))
+                
+                new_ele = set(n_sub_idxs).difference(set(sub_idxs))
                 print(len(new_ele),0.1*bud)
 
                 if len(new_ele) > 0.1*bud:
                     main_optimizer = torch.optim.Adam([
-                    {'params': main_model.parameters()}], lr=learning_rate)
+                    {'params': main_model.parameters()}], lr=max(main_optimizer.param_groups[0]['lr'],\
+                        0.001))
                     
                     dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
 
-                    mul=1
+                    #mul=1
                     stop_count = 0
-                    lr_count = 0'''
-                
+                    lr_count = 0
+
+                #elif len(new_ele) == 0:
+                #    select_every = select_every*2
+
+
                 sub_idxs = n_sub_idxs
 
                 sub_idxs.sort()
@@ -502,7 +510,6 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 np.random.shuffle(np_sub_idxs)
                 loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
                         transform=None),shuffle=False,batch_size=train_batch_size)
-
 
             main_model.load_state_dict(cached_state_dict)
 
@@ -572,7 +579,6 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             tst_accuracy[j] = test_loss
 
     return [val_accuracy, val_classes, tst_accuracy, tst_classes]
-
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
