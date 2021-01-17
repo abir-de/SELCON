@@ -508,18 +508,6 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             main_model.load_state_dict(cached_state_dict)
 
-        if abs(prev_loss - temp_loss) <= 1e-1*mul or prev_loss2 == temp_loss:
-            #print(main_optimizer.param_groups[0]['lr'])
-            lr_count += 1
-            if lr_count == 10:
-                #print(i,"Reduced")
-                print(prev_loss,temp_loss,constraint)
-                scheduler.step()
-                mul/=100
-                lr_count = 0
-        else:
-            lr_count = 0
-
         if abs(prev_loss - temp_loss) <= 1*mul or abs(temp_loss - prev_loss2) <= 1*mul:
             #print(main_optimizer.param_groups[0]['lr'])
             #print('lr',i)
@@ -587,6 +575,11 @@ np.random.seed(42)
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
 starting = time.process_time() 
+rand_fair = train_model_fair('Random',rand_idxs,bud)
+ending = time.process_time() 
+print("Random with Constraints training time ",ending-starting, file=logfile)
+
+starting = time.process_time() 
 sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
@@ -595,11 +588,6 @@ starting = time.process_time()
 #full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
 ending = time.process_time() 
 #print("Full with Constraints training time ",ending-starting, file=logfile)
-
-starting = time.process_time() 
-rand_fair = train_model_fair('Random',rand_idxs,bud)
-ending = time.process_time() 
-print("Random with Constraints training time ",ending-starting, file=logfile)
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
