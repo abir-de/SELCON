@@ -1126,7 +1126,7 @@ class FindSubset_Vect(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = (self.lr/10) * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr/1) * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -1382,7 +1382,7 @@ class FindSubset_Vect(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = (self.lr/10)* math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr/1)* math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -1476,8 +1476,7 @@ class FindSubset_Vect(object):
             
             abs_value [neg_ind] = torch.max(self.F_values)
 
-            m_values[np.array(curr_subset[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size])] = \
-                abs_value
+            m_values[curr_subset][b_idxs*self.batch_size:(b_idxs+1)*self.batch_size] = abs_value
 
             b_idxs +=1
 

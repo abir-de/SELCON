@@ -39,5 +39,6 @@ for dset in datasets:
                     args.append(str(sel))
                     args.append(str(r))
                     args.append(str(delt))
+                    args.append('0')
                     print(args)
                     subprocess.run(args)

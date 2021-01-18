@@ -20,6 +20,8 @@ from torch.utils.data import DataLoader
 import math
 import random
 
+from utils.time_series import load_time_series_data
+
 def getBack(var_grad_fn):
     print(var_grad_fn)
     for n in var_grad_fn.next_functions:
@@ -47,6 +49,8 @@ num_epochs = int(sys.argv[4])
 select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
+is_time = bool(int(sys.argv[8]))
+past_length = int(sys.argv[9])
 
 sub_epoch = 3 #5
 
@@ -55,7 +59,10 @@ batch_size = 4000#1000
 learning_rate = 0.01 #0.05 
 #change = [250,650,1250,1950,4000]#,4200]
 
-fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
+if is_time:
+    fullset, valset, testset = load_time_series_data (datadir, data_name, past_length)
+else:
+    fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
 
 '''x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
      torch.from_numpy(fullset[1]).float().to(device)
@@ -202,13 +209,13 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             
             scores = main_model(inputs)
 
-            #l2_reg = 0
-            #for param in main_model.parameters():
-            #    l2_reg += torch.norm(param)
+            l2_reg = 0
+            for param in main_model.parameters():
+                l2_reg += torch.norm(param)
 
-            l = [torch.flatten(p) for p in main_model.parameters()]
+            '''l = [torch.flatten(p) for p in main_model.parameters()]
             flat = torch.cat(l)
-            l2_reg = torch.sum(flat*flat)
+            l2_reg = torch.sum(flat*flat)'''
             
             loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(batch_idx)
             temp_loss += loss.item()
@@ -394,13 +401,13 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             
             scores_trn = main_model(inputs_trn)
 
-            #l2_reg = 0
-            #for param in main_model.parameters():
-            #    l2_reg += torch.norm(param)
+            l2_reg = 0
+            for param in main_model.parameters():
+                l2_reg += torch.norm(param)
 
-            l = [torch.flatten(p) for p in main_model.parameters()]
+            '''l = [torch.flatten(p) for p in main_model.parameters()]
             flat = torch.cat(l)
-            l2_reg = torch.sum(flat*flat)
+            l2_reg = torch.sum(flat*flat)'''
 
             #state_orig = copy.deepcopy(main_optimizer.state)
             
@@ -506,8 +513,6 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
                     train_batch_size)
 
-                print(d_sub_idxs[:10])
-
                 '''clone_dict = copy.deepcopy(cached_state_dict)
                 alpha_orig = copy.deepcopy(alphas)
 
@@ -518,7 +523,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 new_ele = set(d_sub_idxs).difference(set(sub_idxs))
                 print(len(new_ele),0.1*bud)
 
-                '''if len(new_ele) > 0.1*bud:
+                if len(new_ele) > 0.1*bud:
                     main_optimizer = torch.optim.Adam([
                     {'params': main_model.parameters()}], lr=main_optimizer.param_groups[0]['lr'])
                     #max(main_optimizer.param_groups[0]['lr'],0.001))
@@ -527,11 +532,13 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
                     mul=1
                     stop_count = 0
-                    lr_count = 0'''
+                    lr_count = 0
                 
                 sub_idxs = d_sub_idxs
 
                 sub_idxs.sort()
+
+                print(sub_idxs[:10])
                 np.random.seed(42)
                 np_sub_idxs = np.array(sub_idxs)
                 np.random.shuffle(np_sub_idxs)
@@ -630,24 +637,24 @@ ending = time.process_time()
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-full_fair = train_model_fair('Random', [i for i in range(N)])
+#full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
-print("Full with Constraints training time ",ending-starting, file=logfile)
+#print("Full with Constraints training time ",ending-starting, file=logfile)
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
 starting = time.process_time() 
-full = train_model('Random', [i for i in range(N)],curr_epoch)
+#full = train_model('Random', [i for i in range(N)],curr_epoch)
 ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)
+#print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [rand_fair,sub_fair,full_fair,full,rand] #
-methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Full","Random"] #
+methods = [rand_fair,sub_fair,rand] #full_fair,full,
+methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full",
 
 
 for me in range(len(methods)):
