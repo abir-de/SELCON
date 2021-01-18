@@ -894,7 +894,6 @@ class FindSubset_Fair(object):
 
         return list(indices.cpu())
 
-
 class FindSubset_Vect(object):
     def __init__(self, x_trn, y_trn, x_val, y_val,model,loss,device,delta,lr,lam,batch):
         
@@ -949,10 +948,14 @@ class FindSubset_Vect(object):
         for i in range(f_pi_epoch):
             
             main_optimizer.zero_grad()
+            
             l2_reg = 0
-
             for param in self.model.parameters():
                 l2_reg += torch.norm(param)
+
+            #l = [torch.flatten(p) for p in main_model.parameters()]
+            #flat = torch.cat(l)
+            #l2_reg = torch.sum(flat*flat)
             
             constraint = 0. 
             for batch_idx in list(loader_val.batch_sampler):
@@ -1005,7 +1008,18 @@ class FindSubset_Vect(object):
             '''for param in self.model.parameters():
                 param.requires_grad = True'''
 
+            if loss.item() <= 0.:
+                break
+
+            #if i % 50 == 0:
+            #    print(loss.item(),alphas,constraint)
+
         print("Finishing F phi")
+
+        if loss.item() <= 0.:
+            alphas = torch.zeros_like(alphas)
+
+        print(loss.item())
 
         device_new = self.device #"cuda:2"#self.device #
 
@@ -1112,7 +1126,7 @@ class FindSubset_Vect(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = (self.lr/10000) * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr/10) * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -1179,7 +1193,9 @@ class FindSubset_Vect(object):
             self.F_values[idxs] = trn_loss*trn_loss+ self.lam*reg +\
                 (val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas
 
-        #print(self.F_values[:10])
+        print(self.F_values[:10])
+
+        self.F_values = self.F_values - max(loss.item(),0.) 
 
         print("Finishing Element wise F")
 
@@ -1221,12 +1237,16 @@ class FindSubset_Vect(object):
                 F_curr += sum_error(scores, targets).item() 
 
             #F_curr /= len(loader_tr.batch_sampler)
-            #print(F_curr)
+            #print(F_curr,end=",")
 
-            l2_reg = 0
+            '''l2_reg = 0
             
             for param in self.model.parameters():
-                l2_reg += torch.norm(param)
+                l2_reg += torch.norm(param)'''
+
+            l = [torch.flatten(p) for p in self.model.parameters()]
+            flatt = torch.cat(l)
+            l2_reg = torch.sum(flatt*flatt)
 
             valloss = 0.
             for batch_idx in list(loader_val.batch_sampler):
@@ -1242,6 +1262,7 @@ class FindSubset_Vect(object):
 
             F_curr += (self.lam*l2_reg*len(curr_subset) + multiplier).item()
 
+        #print(self.lam*l2_reg*len(curr_subset), multiplier)
         #print(F_curr)
 
         main_optimizer = torch.optim.Adam([{'params': self.model.parameters()}], lr=self.lr)
@@ -1361,7 +1382,7 @@ class FindSubset_Vect(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = (self.lr/10000)* math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr/10)* math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -1412,7 +1433,7 @@ class FindSubset_Vect(object):
                 inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
                 exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device).view(-1,1)),dim=1)
-                exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                exten_val_y = targets_val.view(-1,1).repeat(1,targets.shape[0])
                 
                 val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
 
@@ -1442,9 +1463,16 @@ class FindSubset_Vect(object):
                 F_curr -(trn_losses + self.lam*reg*rem_len\
                 +(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas) #/rem_len'''
 
-            abs_value = F_curr - (trn_losses + self.lam*reg*rem_len + val_losses)
+            abs_value = F_curr - (trn_losses + self.lam*reg*rem_len \
+                + (val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)
+
+            #print(trn_losses[:10], (self.lam*reg*rem_len)[:10],\
+            #     ((val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)[:10])
+            #print(abs_value[:10])
 
             neg_ind = ((abs_value + 1e-4) < 0).nonzero().view(-1)
+
+            print(len(neg_ind))
             
             abs_value [neg_ind] = torch.max(self.F_values)
 
@@ -1454,6 +1482,9 @@ class FindSubset_Vect(object):
             b_idxs +=1
 
         values,indices =m_values.topk(budget,largest=False)
+
+        print(m_values[:10])
+        print(m_values[curr_subset][:10])
 
         return list(indices.cpu().numpy())
 
@@ -1508,8 +1539,8 @@ class FindSubset_Vect_Fair(object):
         for i in range(f_pi_epoch):
             
             main_optimizer.zero_grad()
+            
             l2_reg = 0
-
             for param in self.model.parameters():
                 l2_reg += torch.norm(param)
             

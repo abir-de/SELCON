@@ -48,7 +48,7 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 
-sub_epoch = 2 #5
+sub_epoch = 3 #5
 
 batch_size = 4000#1000
 
@@ -140,7 +140,7 @@ def weight_reset(m):
     torch.manual_seed(42)
     if type(m) == nn.Linear:
         torch.nn.init.xavier_uniform_(m.weight)
-        m.bias.data.fill_(0.01)
+        m.bias.data.fill_(0.1)
 
 def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
@@ -152,6 +152,10 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         main_model = LogisticNet(M)
     else:'''
     main_model = RegressionNet(M)
+    main_model.apply(weight_reset)
+
+    for p in main_model.parameters():
+        print(p.data)
    
     main_model = main_model.to(device)
     #criterion_sum = nn.MSELoss(reduction='sum')
@@ -165,6 +169,8 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         print("Starting Random Run!")
     elif func_name == 'Random with Prior':
         print("Starting Random with Prior Run!")
+
+    #print(idxs)
 
     idxs.sort()
     np.random.seed(42)
@@ -192,11 +198,17 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             inputs, targets = loader_tr.dataset[batch_idx]
             inputs, targets = inputs.to(device), targets.to(device)
             main_optimizer.zero_grad()
-            l2_reg = 0
+            
             
             scores = main_model(inputs)
-            for param in main_model.parameters():
-                l2_reg += torch.norm(param)
+
+            #l2_reg = 0
+            #for param in main_model.parameters():
+            #    l2_reg += torch.norm(param)
+
+            l = [torch.flatten(p) for p in main_model.parameters()]
+            flat = torch.cat(l)
+            l2_reg = torch.sum(flat*flat)
             
             loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(batch_idx)
             temp_loss += loss.item()
@@ -225,7 +237,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         else:
             lr_count = 0
 
-        if abs(prev_loss - temp_loss) <= 1e-3 and stop_count >= 10:
+        if abs(prev_loss - temp_loss) <= 1e-3 and stop_count >= 5:
             print(i)
             break 
         elif abs(prev_loss - temp_loss) <= 1e-3:
@@ -233,6 +245,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         else:
             stop_count = 0
 
+       
         if i>=2000:
             break
 
@@ -293,17 +306,21 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     main_model = RegressionNet(M)
     main_model.apply(weight_reset)
 
+    #for p in main_model.parameters():
+    #    print(p.data)
+
     main_model = main_model.to(device)
 
     #criterion_sum = nn.MSELoss(reduction='sum')
     
-    alphas = torch.rand_like(deltas,device=device,requires_grad=True)
+    alphas = torch.randn_like(deltas,device=device) + 5. #,requires_grad=True)
+    alphas.requires_grad = True
     #print(alphas)
     #alphas = torch.ones_like(deltas,requires_grad=True)
     '''main_optimizer = optim.SGD([{'params': main_model.parameters()},
                 {'params': alphas}], lr=learning_rate) #'''
-    main_optimizer = torch.optim.Adam([
-                {'params': main_model.parameters()}], lr=learning_rate)
+    main_optimizer = torch.optim.Adam(main_model.parameters(), lr=learning_rate)
+    #[{'params': main_model.parameters()}], lr=learning_rate)
                 
     dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate) #{'params': alphas} #'''
 
@@ -323,7 +340,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         alpha_orig = copy.deepcopy(alphas)
 
         fsubset_d = FindSubset_Vect(x_trn, y_trn, x_val, y_val,main_model,criterion,\
-            device,torch.min(deltas,torch.tensor(0.1)),learning_rate,reg_lambda,batch_size)
+            device,deltas,learning_rate,reg_lambda,batch_size)
 
         fsubset_d.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
 
@@ -338,7 +355,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         main_model.load_state_dict(cached_state_dict)
         
         print("Starting Subset of size ",fraction," with fairness Run!")
-
+    
     sub_idxs.sort()
     np.random.seed(42)
     np_sub_idxs = np.array(sub_idxs)
@@ -368,17 +385,22 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
         temp_loss = 0.
 
-        for batch_idx in list(loader_tr.batch_sampler):
+        for batch_idx_t in list(loader_tr.batch_sampler):
             
-            inputs_trn, targets_trn = loader_tr.dataset[batch_idx]
+            inputs_trn, targets_trn = loader_tr.dataset[batch_idx_t]
             inputs_trn, targets_trn = inputs_trn.to(device), targets_trn.to(device)
 
             main_optimizer.zero_grad()
-            l2_reg = 0
             
-            scores = main_model(inputs_trn)
-            for param in main_model.parameters():
-                l2_reg += torch.norm(param)
+            scores_trn = main_model(inputs_trn)
+
+            #l2_reg = 0
+            #for param in main_model.parameters():
+            #    l2_reg += torch.norm(param)
+
+            l = [torch.flatten(p) for p in main_model.parameters()]
+            flat = torch.cat(l)
+            l2_reg = torch.sum(flat*flat)
 
             #state_orig = copy.deepcopy(main_optimizer.state)
             
@@ -401,15 +423,18 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 inputs, targets = inputs.to(device), targets.to(device)
             
                 val_out = main_model(inputs)
-                constraint += criterion(val_out, targets)
+                constraint += criterion(val_out, targets)            
             
             constraint /= len(loader_val.batch_sampler)
-            constraint = constraint - deltas
-            multiplier = alphas*constraint#torch.dot(alphas,constraint)
+            #constraint = constraint - deltas
+            multiplier = alphas*(constraint - deltas) #torch.dot(alphas,constraint)
 
-            loss = criterion(scores, targets_trn) +  reg_lambda*l2_reg*len(batch_idx) + multiplier #
+            loss = criterion(scores_trn, targets_trn) + reg_lambda*l2_reg*len(batch_idx_t) + multiplier #
             temp_loss += loss.item()
             loss.backward()
+
+            #if i % print_every == 0:  
+            #    print(criterion(scores_trn, targets_trn) , reg_lambda*l2_reg*len(batch_idx_t) ,multiplier)
 
             # clamp gradients, just in case
             for p in filter(lambda p: p.grad is not None, main_model.parameters()):\
@@ -423,6 +448,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 param.requires_grad = False
             alphas.requires_grad = True'''
 
+            dual_optimizer.zero_grad()
+
             constraint = 0.
             for batch_idx in list(loader_val.batch_sampler):
                     
@@ -434,10 +461,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             
             constraint /= len(loader_val.batch_sampler)
             constraint = constraint - deltas
-            multiplier = -1.0*alphas*constraint#torch.dot(-1.0*alphas ,constraint)
+            multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas ,constraint)
 
             #print(alphas,constraint)
-            dual_optimizer.zero_grad()
 
             #main_optimizer.state = state_orig
             multiplier.backward()
@@ -463,18 +489,24 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             #print(criterion(scores, targets) , reg_lambda*l2_reg*len(idxs) ,multiplier)
             #print(main_optimizer.param_groups)#[0]['lr'])
 
-        if ((i + 1) % select_every == 0) and func_name not in ['Full']:
+
+        if ((i + 1) % select_every == 0) and func_name not in ['Random']:
 
             cached_state_dict = copy.deepcopy(main_model.state_dict())
             clone_dict = copy.deepcopy(cached_state_dict)
+
             alpha_orig = copy.deepcopy(alphas)
+
+            '''alpha_orig.requires_grad = False
+            alpha_orig = alpha_orig*((constraint >0).float())
+            alpha_orig.requires_grad = True'''
 
             if func_name == 'Fair_subset':
 
                 d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
                     train_batch_size)
 
-                #print(d_sub_idxs[:10])
+                print(d_sub_idxs[:10])
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
                 alpha_orig = copy.deepcopy(alphas)
@@ -486,16 +518,16 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 new_ele = set(d_sub_idxs).difference(set(sub_idxs))
                 print(len(new_ele),0.1*bud)
 
-                if len(new_ele) > 0.1*bud:
+                '''if len(new_ele) > 0.1*bud:
                     main_optimizer = torch.optim.Adam([
-                    {'params': main_model.parameters()}], lr=max(main_optimizer.param_groups[0]['lr'],\
-                        0.001))
+                    {'params': main_model.parameters()}], lr=main_optimizer.param_groups[0]['lr'])
+                    #max(main_optimizer.param_groups[0]['lr'],0.001))
                     
                     dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
 
                     mul=1
                     stop_count = 0
-                    lr_count = 0
+                    lr_count = 0'''
                 
                 sub_idxs = d_sub_idxs
 
@@ -508,7 +540,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             main_model.load_state_dict(cached_state_dict)
 
-        if abs(prev_loss - temp_loss) <= 1*mul or abs(temp_loss - prev_loss2) <= 1*mul:
+        if abs(prev_loss - temp_loss) <= 1e-1*mul or abs(temp_loss - prev_loss2) <= 1e-1*mul:
             #print(main_optimizer.param_groups[0]['lr'])
             #print('lr',i)
             lr_count += 1
@@ -521,20 +553,33 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         else:
             lr_count = 0
         
-        if (abs(prev_loss - temp_loss) <= 1e-5 or abs(temp_loss - prev_loss2) <= 1e-5) and\
-             stop_count >= 10:
+        '''if (abs(prev_loss - temp_loss) <= 1e-3 or abs(temp_loss - prev_loss2) <= 1e-3) and\
+             stop_count >= 5:
             print(i,prev_loss,temp_loss,constraint)
             break 
-        elif abs(prev_loss - temp_loss) <= 1e-5 or abs(temp_loss - prev_loss2) <= 1e-5:
+        elif abs(prev_loss - temp_loss) <= 1e-3 or abs(temp_loss - prev_loss2) <= 1e-3:
             #print(prev_loss,temp_loss)
             stop_count += 1
         else:
+            stop_count = 0'''
+
+        if constraint <= 0 and stop_count >= 10: #10:
+            print(i,constraint)
+            break
+        elif constraint <= 0:
+            #print(alphas,constraint,stop_count)
+            stop_count += 1
+        else:
             stop_count = 0
+
+
+        if i>=2000:
+            break
         
         prev_loss2 = prev_loss
         prev_loss = temp_loss
         i +=1
-    
+        
     #print(constraint)
     #print(alphas)
     main_model.eval()
@@ -570,7 +615,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     return [val_loss,test_loss,stop_epoch]#[val_accuracy, val_classes, tst_accuracy, tst_classes]
 
 
-np.random.seed(42)
+#np.random.seed(42)
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
@@ -585,24 +630,24 @@ ending = time.process_time()
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-#full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False))
+full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
-#print("Full with Constraints training time ",ending-starting, file=logfile)
+print("Full with Constraints training time ",ending-starting, file=logfile)
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
 starting = time.process_time() 
-#full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
+full = train_model('Random', [i for i in range(N)],curr_epoch)
 ending = time.process_time() 
-#print("Full training time ",ending-starting, file=logfile)
+print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [rand_fair,sub_fair,rand] #full_fair,full,
-methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full",
+methods = [rand_fair,sub_fair,full_fair,full,rand] #
+methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Full","Random"] #
 
 
 for me in range(len(methods)):

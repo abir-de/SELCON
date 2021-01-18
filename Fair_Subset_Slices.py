@@ -393,7 +393,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             multiplier = torch.dot(alphas,torch.max(constraint,torch.zeros_like(constraint)))
 
-            loss = criterion(scores, targets_trn) +  reg_lambda*l2_reg*len(batch_idx) + multiplier #
+            loss = criterion(scores, targets_trn) +  reg_lambda*l2_reg*len(batch_idx) \
+                + torch.max(multiplier,0) #
             temp_loss += loss.item()
             loss.backward()
 
@@ -455,6 +456,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             cached_state_dict = copy.deepcopy(main_model.state_dict())
             clone_dict = copy.deepcopy(cached_state_dict)
             
+            
+
             alphas.requires_grad = False
             #alpha_orig = alpha_orig*((constraint >0).float())
             alphas = alphas*((constraint >0).float())
@@ -526,11 +529,11 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         else:
             lr_count = 0
         
-        if (abs(prev_loss - temp_loss) <= 1e-5 or abs(temp_loss - prev_loss2) <= 1e-5) and\
+        if (abs(prev_loss - temp_loss) <= 1e-3 or abs(temp_loss - prev_loss2) <= 1e-3) and\
              stop_count >= 10:
             print(i,prev_loss,temp_loss,constraint)
             break 
-        elif abs(prev_loss - temp_loss) <= 1e-5 or abs(temp_loss - prev_loss2) <= 1e-5:
+        elif abs(prev_loss - temp_loss) <= 1e-3 or abs(temp_loss - prev_loss2) <= 1e-3:
             #print(prev_loss,temp_loss)
             stop_count += 1
         else:
