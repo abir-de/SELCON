@@ -54,7 +54,7 @@ past_length = int(sys.argv[9])
 
 sub_epoch = 3 #5
 
-batch_size = 4000#1000
+batch_size = 1300 #4000#1000
 
 learning_rate = 0.01 #0.05 
 #change = [250,650,1250,1950,4000]#,4200]
@@ -433,10 +433,11 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 constraint += criterion(val_out, targets)            
             
             constraint /= len(loader_val.batch_sampler)
-            #constraint = constraint - deltas
-            multiplier = alphas*(constraint - deltas) #torch.dot(alphas,constraint)
+            constraint = constraint - deltas
+            multiplier = alphas*(float(constraint > 0)) #torch.dot(alphas,constraint)
 
-            loss = criterion(scores_trn, targets_trn) + reg_lambda*l2_reg*len(batch_idx_t) + multiplier #
+            loss = criterion(scores_trn, targets_trn) + reg_lambda*l2_reg*len(batch_idx_t) + \
+                multiplier #
             temp_loss += loss.item()
             loss.backward()
 

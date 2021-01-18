@@ -52,8 +52,8 @@ def process_time_series(datadir, past_length,col_name,name,save_data=True):
     
     if save_data:
         # Save the numpy files to the folder where they come from
-        data_np_path = os.path.join(datadir, name+'.data.npy') 
-        target_np_path = os.path.join(datadir, name+'.label.npy') 
+        data_np_path = os.path.join(datadir, name+'_'+str(past_length)+'.data.npy') 
+        target_np_path = os.path.join(datadir, name+'_'+str(past_length)+'.label.npy') 
         np.save(data_np_path, finaL_x_trn)
         np.save(target_np_path, finaL_y_trn)
 
@@ -62,11 +62,11 @@ def process_time_series(datadir, past_length,col_name,name,save_data=True):
 
 def load_time_series_data (datadir, dset_name,past_length):
 
-    if os.path.isfile(os.path.join(datadir, dset_name+'.data.npy')) and \
-            os.path.isfile(os.path.join(datadir, dset_name+'.label.npy')):
+    if os.path.isfile(os.path.join(datadir, dset_name+'_'+str(past_length)+'.data.npy')) and \
+            os.path.isfile(os.path.join(datadir, dset_name+'_'+str(past_length)+'.label.npy')):
         
-        x_trn = np.load(os.path.join(datadir, dset_name+'.data.npy'))
-        y_trn  = np.load(os.path.join(datadir, dset_name+'.label.npy'))
+        x_trn = np.load(os.path.join(datadir, dset_name+'_'+str(past_length)+'.data.npy'))
+        y_trn  = np.load(os.path.join(datadir, dset_name+'_'+str(past_length)+'.label.npy'))
 
     else:
     
@@ -82,8 +82,8 @@ def load_time_series_data (datadir, dset_name,past_length):
         elif dset_name == "NY_Stock_exchange_low":
             x_trn, y_trn  = process_time_series(datadir,past_length,'low',dset_name)
 
-    x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.2, random_state=42)
-    x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
+    x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
+    x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.03, random_state=42)
     
     sc = StandardScaler()
     x_trn = sc.fit_transform(x_trn)
