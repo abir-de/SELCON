@@ -85,12 +85,12 @@ def load_time_series_data (datadir, dset_name,past_length):
     x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
     x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.03, random_state=42)
     
-    '''sc = MinMaxScaler() #StandardScaler()
+    sc = MinMaxScaler() #StandardScaler()
     x_trn = sc.fit_transform(x_trn)
     x_val = sc.transform(x_val)
     x_tst = sc.transform(x_tst)
 
-    sc_l = MinMaxScaler() #StandardScaler()
+    '''sc_l = MinMaxScaler() #StandardScaler()
     y_trn = np.reshape(sc_l.fit_transform(np.reshape(y_trn,(-1,1))),(-1))'''
     #y_val = np.reshape(sc_l.fit_transform(np.reshape(y_val,(-1,1))),(-1))
     #y_tst = np.reshape(sc_l.fit_transform(np.reshape(y_tst,(-1,1))),(-1))

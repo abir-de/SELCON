@@ -945,7 +945,11 @@ class FindSubset_Vect(object):
             
 
         #Compute F_phi
-        for i in range(f_pi_epoch):
+        #for i in range(f_pi_epoch):
+
+        prev_loss = 1000
+        
+        while(True):
             
             main_optimizer.zero_grad()
             
@@ -1010,6 +1014,12 @@ class FindSubset_Vect(object):
 
             if loss.item() <= 0.:
                 break
+
+            if abs(prev_loss - loss.item()) <= 1e-1: 
+                print(i)
+                break 
+
+            prev_loss = loss.item()
 
             #if i % 50 == 0:
             #    print(loss.item(),alphas,constraint)
