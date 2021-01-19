@@ -948,6 +948,7 @@ class FindSubset_Vect(object):
         #for i in range(f_pi_epoch):
 
         prev_loss = 1000
+        stop_count = 0
         
         while(True):
             
@@ -1015,9 +1016,12 @@ class FindSubset_Vect(object):
             if loss.item() <= 0.:
                 break
 
-            if abs(prev_loss - loss.item()) <= 1e-3: 
-                print(prev_loss,loss.item())
+            if abs(prev_loss - loss.item()) <= 1e-3 and stop_count >= 5:
                 break 
+            elif abs(prev_loss - loss.item()) <= 1e-3:
+                stop_count += 1
+            else:
+                stop_count = 0
 
             prev_loss = loss.item()
 
