@@ -288,9 +288,9 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             inputs, targets = inputs.to(device), targets.to(device)
         
             val_out = main_model(inputs)
-            if is_time:
+            '''if is_time:
                 val_out = sc_trans.inverse_transform(val_out.cpu().numpy())
-                val_out = torch.from_numpy(val_out).float()
+                val_out = torch.from_numpy(val_out).float()'''
             val_loss += criterion(val_out, targets)
         
         val_loss /= len(loader_val.batch_sampler)
@@ -302,9 +302,9 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             inputs, targets = inputs.to(device), targets.to(device)
 
             outputs = main_model(inputs)
-            if is_time:
+            '''if is_time:
                 outputs = sc_trans.inverse_transform(outputs.cpu().numpy())
-                outputs = torch.from_numpy(outputs).float()
+                outputs = torch.from_numpy(outputs).float()'''
             test_loss += criterion(outputs, targets)
 
         test_loss /= len(loader_tst.batch_sampler)        
@@ -439,9 +439,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 inputs, targets = inputs.to(device), targets.to(device)
             
                 val_out = main_model(inputs)
-                if is_time:
+                '''if is_time:
                     val_out = sc_trans.inverse_transform(val_out.cpu().numpy())
-                    val_out = torch.from_numpy(val_out).float()
+                    val_out = torch.from_numpy(val_out).float()'''
                 constraint += criterion(val_out, targets)            
             
             constraint /= len(loader_val.batch_sampler)
@@ -477,9 +477,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 inputs, targets = inputs.to(device), targets.to(device)
             
                 val_out = main_model(inputs)
-                if is_time:
+                '''if is_time:
                     val_out = sc_trans.inverse_transform(val_out.cpu().numpy())
-                    val_out = torch.from_numpy(val_out).float()
+                    val_out = torch.from_numpy(val_out).float()'''
                 constraint += criterion(val_out, targets)
             
             constraint /= len(loader_val.batch_sampler)
@@ -620,9 +620,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             inputs, targets = inputs.to(device), targets.to(device)
         
             val_out = main_model(inputs)
-            if is_time:
+            '''if is_time:
                 val_out = sc_trans.inverse_transform(val_out.cpu().numpy())
-                val_out = torch.from_numpy(val_out).float()
+                val_out = torch.from_numpy(val_out).float()'''
             val_loss += criterion(val_out, targets)
         
         val_loss /= len(loader_val.batch_sampler)
@@ -634,9 +634,9 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             inputs, targets = inputs.to(device), targets.to(device)
 
             outputs = main_model(inputs)
-            if is_time:
+            '''if is_time:
                 outputs = sc_trans.inverse_transform(outputs.cpu().numpy())
-                outputs = torch.from_numpy(outputs).float()
+                outputs = torch.from_numpy(outputs).float()'''
             test_loss += criterion(outputs, targets)
 
         test_loss /= len(loader_tst.batch_sampler) 
