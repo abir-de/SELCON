@@ -60,7 +60,7 @@ learning_rate = 0.01 #0.05
 #change = [250,650,1250,1950,4000]#,4200]
 
 if is_time:
-    fullset, valset, testset, sc_trans = load_time_series_data (datadir, data_name, past_length)
+    fullset, valset, testset = load_time_series_data (datadir, data_name, past_length) #, sc_trans
 else:
     fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
 

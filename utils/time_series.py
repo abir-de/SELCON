@@ -99,4 +99,4 @@ def load_time_series_data (datadir, dset_name,past_length):
     valset = (x_val, y_val)
     testset = (x_tst, y_tst)
 
-    return fullset, valset, testset, sc_l
+    return fullset, valset, testset #, sc_l
