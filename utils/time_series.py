@@ -92,11 +92,11 @@ def load_time_series_data (datadir, dset_name,past_length):
 
     sc_l = MinMaxScaler() #StandardScaler()
     y_trn = np.reshape(sc_l.fit_transform(np.reshape(y_trn,(-1,1))),(-1))
-    y_val = np.reshape(sc_l.fit_transform(np.reshape(y_val,(-1,1))),(-1))
-    y_tst = np.reshape(sc_l.fit_transform(np.reshape(y_tst,(-1,1))),(-1))
+    #y_val = np.reshape(sc_l.fit_transform(np.reshape(y_val,(-1,1))),(-1))
+    #y_tst = np.reshape(sc_l.fit_transform(np.reshape(y_tst,(-1,1))),(-1))
 
     fullset = (x_trn, y_trn)
     valset = (x_val, y_val)
     testset = (x_tst, y_tst)
 
-    return fullset, valset, testset
+    return fullset, valset, testset, sc_l
