@@ -561,7 +561,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         else:
             lr_count = 0
         
-        '''if (abs(prev_loss - temp_loss) <= 1e-3 or abs(temp_loss - prev_loss2) <= 1e-3) and\
+        if (abs(prev_loss - temp_loss) <= 1e-3 or abs(temp_loss - prev_loss2) <= 1e-3) and\
              stop_count >= 5:
             print(i,prev_loss,temp_loss,constraint)
             break 
@@ -569,16 +569,16 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             #print(prev_loss,temp_loss)
             stop_count += 1
         else:
-            stop_count = 0'''
+            stop_count = 0
 
-        if constraint <= 0 and stop_count >= 10: #10:
+        '''if constraint <= 0 and stop_count >= 10: #10:
             print(i,constraint)
             break
         elif constraint <= 0:
             #print(alphas,constraint,stop_count)
             stop_count += 1
         else:
-            stop_count = 0
+            stop_count = 0'''
 
 
         if i>=2000:
