@@ -446,7 +446,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             
             constraint /= len(loader_val.batch_sampler)
             constraint = constraint - deltas
-            multiplier = alphas*(float(constraint > 0)) #torch.dot(alphas,constraint)
+            multiplier = alphas*constraint*(float(constraint > 0)) #torch.dot(alphas,constraint)
 
             loss = criterion(scores_trn, targets_trn) + reg_lambda*l2_reg*len(batch_idx_t) + \
                 multiplier #
