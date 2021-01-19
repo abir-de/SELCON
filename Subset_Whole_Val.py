@@ -78,6 +78,9 @@ x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1])
 if data_name == "synthetic":
     all_logs_dir = './results/Whole/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
+elif is_time:
+    all_logs_dir = './results/Whole/' + data_name +"_"+str(past_length)+'/' + str(fraction) +\
+        '/' +str(delt) + '/' +str(select_every)
 else:
     all_logs_dir = './results/Whole/' + data_name+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
