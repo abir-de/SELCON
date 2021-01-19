@@ -1016,7 +1016,6 @@ class FindSubset_Vect(object):
                 break
 
             if abs(prev_loss - loss.item()) <= 1e-1: 
-                print(i)
                 break 
 
             prev_loss = loss.item()
