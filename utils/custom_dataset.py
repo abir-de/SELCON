@@ -613,11 +613,12 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
         y_trn = np.concatenate((y_trn, y_tst), axis=0)
 
     elif dset_name == "Community_Crime":
-        trn_file = os.path.join(datadir, 'communities.daa')
 
-        data_dims = 122
+        x_trn, y_trn = clean_communities_full(os.path.join(datadir, 'communities.csv'))
 
-        x_trn, y_trn = community_crime_load(trn_file, dim=data_dims)
+    elif dset_name == 'LawSchool':
+
+        x_trn, y_trn = clean_lawschool_full(os.path.join(datadir, 'lawschool.csv'))
 
     elif dset_name == 'OnlineNewsPopularity':
         trn_file = os.path.join(datadir, 'OnlineNewsPopularity.csv')
@@ -663,18 +664,20 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
         x_tst, y_tst  = libsvm_file_load(tst_file,90)
         x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.03, random_state=42)
     else:
-        x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.2, random_state=42)
+        x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
         x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
 
-    sc = StandardScaler()
-    x_trn = sc.fit_transform(x_trn)
-    x_val = sc.transform(x_val)
-    x_tst = sc.transform(x_tst)
+    if dset_name not in ["census"]:
+    
+        sc = StandardScaler()
+        x_trn = sc.fit_transform(x_trn)
+        x_val = sc.transform(x_val)
+        x_tst = sc.transform(x_tst)
 
-    sc_l = StandardScaler()
-    y_trn = np.reshape(sc_l.fit_transform(np.reshape(y_trn,(-1,1))),(-1))
-    y_val = np.reshape(sc_l.fit_transform(np.reshape(y_val,(-1,1))),(-1))
-    y_tst = np.reshape(sc_l.fit_transform(np.reshape(y_tst,(-1,1))),(-1))
+        sc_l = StandardScaler()
+        y_trn = np.reshape(sc_l.fit_transform(np.reshape(y_trn,(-1,1))),(-1))
+        y_val = np.reshape(sc_l.fit_transform(np.reshape(y_val,(-1,1))),(-1))
+        y_tst = np.reshape(sc_l.fit_transform(np.reshape(y_tst,(-1,1))),(-1))
 
     if isnumpy:
         fullset = (x_trn, y_trn)

@@ -949,14 +949,15 @@ class FindSubset_Vect(object):
 
         prev_loss = 1000
         stop_count = 0
+        i=0
         
         while(True):
             
             main_optimizer.zero_grad()
             
-            l2_reg = 0
+            '''l2_reg = 0
             for param in self.model.parameters():
-                l2_reg += torch.norm(param)
+                l2_reg += torch.norm(param)'''
 
             #l = [torch.flatten(p) for p in main_model.parameters()]
             #flat = torch.cat(l)
@@ -1016,6 +1017,9 @@ class FindSubset_Vect(object):
             if loss.item() <= 0.:
                 break
 
+            #if i>= f_pi_epoch:
+            #    break
+
             if abs(prev_loss - loss.item()) <= 1e-3 and stop_count >= 5:
                 break 
             elif abs(prev_loss - loss.item()) <= 1e-3:
@@ -1024,6 +1028,7 @@ class FindSubset_Vect(object):
                 stop_count = 0
 
             prev_loss = loss.item()
+            i+=1
 
             #if i % 50 == 0:
             #    print(loss.item(),alphas,constraint)
@@ -1396,7 +1401,7 @@ class FindSubset_Vect(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = (self.lr/1)* math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr/10000)* math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -1490,14 +1495,18 @@ class FindSubset_Vect(object):
             
             abs_value [neg_ind] = torch.max(self.F_values)
 
-            m_values[curr_subset][b_idxs*self.batch_size:(b_idxs+1)*self.batch_size] = abs_value
+            m_values[torch.tensor(curr_subset)[b_idxs*self.batch_size:(b_idxs+1)*self.batch_size]]\
+                 = abs_value
 
             b_idxs +=1
 
         values,indices =m_values.topk(budget,largest=False)
 
+        #self.F_values = m_values
+
         print(m_values[:10])
         print(m_values[curr_subset][:10])
+        print(values[:10])
 
         return list(indices.cpu().numpy())
 

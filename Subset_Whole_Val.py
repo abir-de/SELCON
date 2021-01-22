@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from sklearn.model_selection import train_test_split
-from utils.custom_dataset import load_std_regress_data,CustomDataset  #load_dataset_custom
+from utils.custom_dataset import load_std_regress_data,CustomDataset,load_dataset_custom
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
 from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
@@ -50,7 +50,8 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 is_time = bool(int(sys.argv[8]))
-past_length = int(sys.argv[9])
+if is_time:
+    past_length = int(sys.argv[9])
 
 sub_epoch = 3 #5
 
@@ -61,8 +62,50 @@ learning_rate = 0.01 #0.05
 
 if is_time:
     fullset, valset, testset = load_time_series_data (datadir, data_name, past_length) #, sc_trans
+
+    x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
+    x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
+    x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
+
+elif data_name in ['Community_Crime','census','LawSchool']:
+
+
+    fullset, data_dims = load_dataset_custom(datadir, data_name, True)
+
+    if data_name == 'Community_Crime':
+        x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
+            = get_slices(data_name,fullset[0], fullset[1],device,3)
+
+        change = [20,40,80,160]
+
+    elif data_name == 'census':
+        x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
+            = get_slices(data_name,fullset[0], fullset[1],device)
+        
+        rescale = np.linalg.norm(x_trn)
+        x_trn = x_trn/rescale
+
+        for j in range(len(x_val_list)):
+            x_val_list[j] = x_val_list[j]/rescale
+            x_tst_list[j] = x_tst_list[j]/rescale
+
+        num_cls = 2
+
+    elif data_name == 'LawSchool':
+        x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
+            = get_slices(data_name,fullset[0], fullset[1],device)
+
+    x_trn, y_trn = torch.from_numpy(x_trn).float().to(device),torch.from_numpy(y_trn).float().to(device) 
+
+    x_val,y_val = torch.cat(x_val_list,dim=0), torch.cat(y_val_list,dim=0)
+    x_tst,y_tst = torch.cat(x_tst_list,dim=0), torch.cat(y_tst_list,dim=0)
+
 else:
     fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
+
+    x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
+    x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
+    x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
 
 '''x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
      torch.from_numpy(fullset[1]).float().to(device)
@@ -71,9 +114,7 @@ x_tst, y_tst = torch.from_numpy(testset[0]).float().to(device),\
 x_val, y_val = torch.from_numpy(valset[0]).float().to(device),\
      torch.from_numpy(valset[1]).float().to(device)'''
 
-x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
-x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
-x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
+
 
 if data_name == "synthetic":
     all_logs_dir = './results/Whole/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
@@ -164,8 +205,8 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     main_model = RegressionNet(M)
     main_model.apply(weight_reset)
 
-    for p in main_model.parameters():
-        print(p.data)
+    #for p in main_model.parameters():
+    #    print(p.data)
    
     main_model = main_model.to(device)
     #criterion_sum = nn.MSELoss(reduction='sum')
@@ -195,8 +236,8 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     i =0
     mul=1
     lr_count = 0
-    while(True):
-        #for i in range(curr_epoch):#num_epochs):
+    #while(True):
+    for i in range(2000):#curr_epoch):#num_epochs):
         
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
         #inputs, targets = x_trn[idxs], y_trn[idxs]
@@ -208,8 +249,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             inputs, targets = loader_tr.dataset[batch_idx]
             inputs, targets = inputs.to(device), targets.to(device)
             main_optimizer.zero_grad()
-            
-            
+                        
             scores = main_model(inputs)
 
             l2_reg = 0
@@ -231,7 +271,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             #scheduler.step()
 
         if i % print_every == 0:  # Print Training and Validation Loss
-            print('Epoch:', i + 1, 'SubsetTrn', loss.item())
+            print('Epoch:', i + 1, 'SubsetTrn', temp_loss)
             print(prev_loss,temp_loss,mul)
             #print(main_optimizer.param_groups[0]['lr'])
 
@@ -247,22 +287,21 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         else:
             lr_count = 0
 
-        if abs(prev_loss - temp_loss) <= 1e-3 and stop_count >= 5:
+        '''if abs(prev_loss - temp_loss) <= 1e-3 and stop_count >= 5:
             print(i)
             break 
         elif abs(prev_loss - temp_loss) <= 1e-3:
             stop_count += 1
         else:
             stop_count = 0
-
        
-        if i>=2000:
-            break
+        if i>=curr_epoch: #2000:
+            break'''
 
         #print(temp_loss,prev_loss)
         prev_loss2 = prev_loss
         prev_loss = temp_loss
-        i+=1
+        #i+=1
 
     #tst_accuracy = torch.zeros(len(x_tst_list))
     #val_accuracy = torch.zeros(len(x_val_list))
@@ -329,7 +368,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
     #criterion_sum = nn.MSELoss(reduction='sum')
     
-    alphas = torch.randn_like(deltas,device=device) + 5. #,requires_grad=True)
+    alphas = torch.randn_like(deltas,device=device) #+ 5. #,requires_grad=True)
     alphas.requires_grad = True
     #print(alphas)
     #alphas = torch.ones_like(deltas,requires_grad=True)
@@ -394,12 +433,15 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     i =0
     mul = 1
     lr_count = 0
-    while (True):
+    #while (True):
+    for i in range(2000):
 
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
         #inputs, targets = x_trn[sub_idxs], y_trn[sub_idxs]
 
         temp_loss = 0.
+
+        starting = time.process_time() 
 
         for batch_idx_t in list(loader_tr.batch_sampler):
             
@@ -576,7 +618,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         else:
             lr_count = 0
         
-        if (abs(prev_loss - temp_loss) <= 1e-3 or abs(temp_loss - prev_loss2) <= 1e-3) and\
+        '''if (abs(prev_loss - temp_loss) <= 1e-3 or abs(temp_loss - prev_loss2) <= 1e-3) and\
              stop_count >= 5:
             print(i,prev_loss,temp_loss,constraint)
             break 
@@ -584,7 +626,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             #print(prev_loss,temp_loss)
             stop_count += 1
         else:
-            stop_count = 0
+            stop_count = 0'''
 
         '''if constraint <= 0 and stop_count >= 10: #10:
             print(i,constraint)
@@ -596,12 +638,12 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             stop_count = 0'''
 
 
-        if i>=2000:
-            break
+        '''if i>=2000:
+            break'''
         
         prev_loss2 = prev_loss
         prev_loss = temp_loss
-        i +=1
+        #i +=1
         
     #print(constraint)
     #print(alphas)
@@ -659,25 +701,25 @@ ending = time.process_time()
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-#full_fair = train_model_fair('Random', [i for i in range(N)])
+full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
-#print("Full with Constraints training time ",ending-starting, file=logfile)
+print("Full with Constraints training time ",ending-starting, file=logfile)
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
 starting = time.process_time() 
-#full = train_model('Random', [i for i in range(N)],curr_epoch)
+full = train_model('Random', [i for i in range(N)],2000)
 ending = time.process_time() 
-#print("Full training time ",ending-starting, file=logfile)
+print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-rand = train_model('Random',rand_idxs,curr_epoch)
+rand = train_model('Random',rand_idxs,2000)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [rand_fair,sub_fair,rand] #full_fair,full,
-methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full",
-
+methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
+methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
+#["Full"]#
 
 for me in range(len(methods)):
     
