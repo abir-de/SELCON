@@ -4,6 +4,7 @@ import sys
 datadir = '../Datasets/data//NY_Stock_exchange'
 
 datasets = ["NY_Stock_exchange_close"]
+#datasets = ["NY_Stock_exchange_high"]
 
 fracs =[0.001,0.004,0.05,0.006,0.01]
 #num_epochs = 2000#2500#1000

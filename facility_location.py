@@ -12,6 +12,7 @@ import sys
 import subprocess
 import os
 
+#Facility Location 
 class SetFunctionFacLoc(object):
 
     def __init__(self, device, train_full_loader):#, valid_loader):
