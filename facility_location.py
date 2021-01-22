@@ -39,13 +39,14 @@ class SetFunctionFacLoc(object):
 
     def compute_score(self):
       self.N = 0
-      g_is =[]
+      g_is = self.train_loader
+
       with torch.no_grad():
-        for i, data_i in  enumerate(self.train_loader, 0):
+        '''for i, data_i in  enumerate(self.train_loader, 0):
           inputs_i, target_i = data_i
           inputs_i = inputs_i.to(self.device) #, target_i.to(self.device)
           self.N += inputs_i.size()[0]
-          g_is.append(inputs_i)
+          g_is.append(inputs_i)'''
         
         self.sim_mat = torch.zeros([self.N, self.N],dtype=torch.float32)
 
@@ -143,6 +144,8 @@ def run_stochastic_Facloc( data, targets, sub_budget, budget,logfile,device='cpu
     facloc_indices = []
 
     per_iter_bud = int(budget/num_iterations)
+
+    trn_batch = 1200
  
     for i in range(num_iterations):
         
@@ -156,7 +159,12 @@ def run_stochastic_Facloc( data, targets, sub_budget, budget,logfile,device='cpu
         data_subset = data[sub_indices].cpu()
         targets_subset = targets[sub_indices].cpu()
         train_loader_greedy = []
-        train_loader_greedy.append((data_subset, targets_subset))
+        for item in range(math.ceil(sub_budget /trn_batch)):
+          inputs = data_subset[item*trn_batch:(item+1)*trn_batch]
+          target  = targets_subset[item*trn_batch:(item+1)*trn_batch]
+          train_loader_greedy.append((inputs,target))
+        
+        #train_loader_greedy.append((data_subset, targets_subset))
         setf_model = SetFunctionFacLoc(device, train_loader_greedy)
         idxs = setf_model.lazy_greedy_max(min(per_iter_bud,budget-len(facloc_indices)),logfile)#, model)
         facloc_indices.extend([sub_indices[idx] for idx in idxs])
@@ -165,7 +173,7 @@ def run_stochastic_Facloc( data, targets, sub_budget, budget,logfile,device='cpu
 ## Convert to this argparse
 datadir = sys.argv[1]
 data_name = sys.argv[2]
-frac = sys.argv[3]
+frac = float(sys.argv[3])
 is_time = bool(int(sys.argv[4]))
 if is_time:
     past_length = int(sys.argv[5])
