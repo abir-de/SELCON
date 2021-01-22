@@ -6,7 +6,7 @@ datadir = '../Datasets/data//NY_Stock_exchange'
 datasets = ["NY_Stock_exchange_close"]
 #datasets = ["NY_Stock_exchange_high"]
 
-fracs =[0.001,0.004,0.05,0.006,0.01]
+fracs =0.01#[0.001,0.004,0.05,0.006,0.01]
 #num_epochs = 2000#2500#1000
 #select_every = [35]#,35,50]
 #reg_lambda = [1e-5]

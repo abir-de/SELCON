@@ -219,7 +219,7 @@ else:
     x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
     x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
 
-budget = [int(float(i)*len(y_trn)) for i in frac]
+budget = frac*len(y_trn) #[int(float(i)*len(y_trn)) for i in frac]
 
 all_logs_dir = './results/FacLoc/' + data_name
 print(all_logs_dir)
@@ -227,6 +227,6 @@ subprocess.run(["mkdir", "-p", all_logs_dir])
 path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
 logfile = open(path_logfile, 'w')
 
-index =run_stochastic_Facloc(x_trn, y_trn, 10000, max(budget),logfile,device=device)
+index =run_stochastic_Facloc(x_trn, y_trn, 10000, budget,logfile,device=device)
 
 logfile.writelines(index)
