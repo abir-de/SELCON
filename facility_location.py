@@ -67,7 +67,9 @@ class SetFunctionFacLoc(object):
       return bestId
 
 
-    def lazy_greedy_max(self, budget):
+    def lazy_greedy_max(self, budget,logfile):
+      
+      starting = time.process_time() 
       id_first = self.compute_score()
       self.gains = PriorityQueue()
       for i in range(self.N):
@@ -81,7 +83,10 @@ class SetFunctionFacLoc(object):
       greedyList = [id_first, second[1]]
       self.max_sim = torch.max(self.max_sim,self.sim_mat[second[1]].to(self.device))
 
+      ending = time.process_time()
+      print("Kernel computation time ",ending-starting, file=logfile)
 
+      starting = time.process_time()
       while(numSelected < budget):
 
           if self.gains.empty():
@@ -119,9 +124,12 @@ class SetFunctionFacLoc(object):
       #print()
       #gamma = self.compute_gamma(greedyList)
 
+      ending = time.process_time()
+      print("Selectio time ",ending-starting, file=logfile)
+
       return greedyList
 
-def run_stochastic_Facloc( data, targets, sub_budget, budget,device='cpu'):
+def run_stochastic_Facloc( data, targets, sub_budget, budget,logfile,device='cpu'):
     
     #model = model.to(device)
     '''approximate_error = 0.01
@@ -149,14 +157,14 @@ def run_stochastic_Facloc( data, targets, sub_budget, budget,device='cpu'):
         train_loader_greedy = []
         train_loader_greedy.append((data_subset, targets_subset))
         setf_model = SetFunctionFacLoc(device, train_loader_greedy)
-        idxs = setf_model.lazy_greedy_max(min(per_iter_bud,budget-len(facloc_indices)))#, model)
+        idxs = setf_model.lazy_greedy_max(min(per_iter_bud,budget-len(facloc_indices)),logfile)#, model)
         facloc_indices.extend([sub_indices[idx] for idx in idxs])
     return facloc_indices
 
 ## Convert to this argparse
 datadir = sys.argv[1]
 data_name = sys.argv[2]
-fraction = float(sys.argv[3])
+frac = sys.argv[3]
 is_time = bool(int(sys.argv[4]))
 if is_time:
     past_length = int(sys.argv[5])
@@ -210,6 +218,7 @@ else:
     x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
     x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
 
+budget = [int(float(i)*len(y_trn)) for i in frac]
 
 all_logs_dir = './results/FacLoc/' + data_name
 print(all_logs_dir)
@@ -217,4 +226,6 @@ subprocess.run(["mkdir", "-p", all_logs_dir])
 path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
 logfile = open(path_logfile, 'w')
 
-#run_stochastic_Facloc(x_trn, y_trn, sub_budget, budget,device='cpu')
+index =run_stochastic_Facloc(x_trn, y_trn, 10000, max(budget),logfile,device=device)
+
+logfile.writelines(index)

@@ -13,14 +13,14 @@ fracs =[0.001,0.004,0.05,0.006,0.01]
 past_length = 300
 
 for dset in datasets:
-    for f in fracs:
+    #for f in fracs:
             
-        args = ['python3']
-        args.append('facility_location.py')
-        args.append(datadir)
-        args.append(dset)
-        args.append(str(f))
-        args.append('1')
-        args.append(str(past_length))
-        print(args)
-        subprocess.run(args)
+    args = ['python3']
+    args.append('facility_location.py')
+    args.append(datadir)
+    args.append(dset)
+    args.append(str(fracs))
+    args.append('1')
+    args.append(str(past_length))
+    print(args)
+    subprocess.run(args)
