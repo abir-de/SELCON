@@ -14,6 +14,9 @@ from utils.custom_dataset import load_std_regress_data,CustomDataset,load_datase
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
 from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
+from facility_location import run_stochastic_Facloc
+
+from glister import Glister_Linear_SetFunction_RModular_Regression as GLISTER
 
 from torch.utils.data import DataLoader
 
@@ -59,6 +62,9 @@ batch_size = 4000#1000
 
 learning_rate = 0.01 #0.05 
 #change = [250,650,1250,1950,4000]#,4200]
+
+#def read_facility_location:
+#    f = open('results/FacLoc/'+data_name+"/"+data_name+".txt")
 
 if is_time:
     fullset, valset, testset = load_time_series_data (datadir, data_name, past_length) #, sc_trans
@@ -216,11 +222,6 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     #scheduler = torch.optim.lr_scheduler.MultiStepLR(main_optimizer, milestones=change, gamma=0.5)
     scheduler = optim.lr_scheduler.StepLR(main_optimizer, step_size=1, gamma=0.1)
 
-    if func_name == 'Random':
-        print("Starting Random Run!")
-    elif func_name == 'Random with Prior':
-        print("Starting Random with Prior Run!")
-
     #print(idxs)
 
     idxs.sort()
@@ -229,6 +230,18 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     np.random.shuffle(np_sub_idxs)
     loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
             transform=None),shuffle=False,batch_size=train_batch_size)
+
+    loader_val = DataLoader(CustomDataset(x_val, y_val,transform=None),shuffle=False,\
+        batch_size=batch_size)
+
+    if func_name == 'Random':
+        print("Starting Random Run!")
+    elif func_name == 'Random with Prior':
+        print("Starting Random with Prior Run!")
+
+    elif func_name == "Glister":
+        glister = GLISTER(loader_tr, loader_val, main_model,learning_rate, device,'RGreedy')
+        print("Starting glister of size ",fraction)
 
     stop_count = 0
     prev_loss = 1000
@@ -275,6 +288,40 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             print(prev_loss,temp_loss,mul)
             #print(main_optimizer.param_groups[0]['lr'])
 
+        if ((i + 1) % select_every == 0) and func_name not in ['Random']:
+
+            cached_state_dict = copy.deepcopy(main_model.state_dict())
+            clone_dict = copy.deepcopy(cached_state_dict)
+
+            if func_name == 'Glister':
+
+                d_sub_idxs = glister.select(bud,clone_dict)
+
+                new_ele = set(d_sub_idxs).difference(set(idxs))
+                print(len(new_ele),0.1*bud)
+
+                if len(new_ele) > 0.1*bud:
+                    main_optimizer = torch.optim.Adam([
+                    {'params': main_model.parameters()}], lr=main_optimizer.param_groups[0]['lr'])
+                    #max(main_optimizer.param_groups[0]['lr'],0.001))
+
+                    mul=1
+                    #stop_count = 0
+                    lr_count = 0
+                
+                idxs = d_sub_idxs
+
+                idxs.sort()
+
+                print(idxs[:10])
+                np.random.seed(42)
+                np_sub_idxs = np.array(idxs)
+                np.random.shuffle(np_sub_idxs)
+                loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
+                        transform=None),shuffle=False,batch_size=train_batch_size)
+
+            main_model.load_state_dict(cached_state_dict)
+
         if abs(prev_loss - temp_loss) <= 1e-1*mul or prev_loss2 == temp_loss:
             #print(main_optimizer.param_groups[0]['lr'])
             lr_count += 1
@@ -305,9 +352,6 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
     #tst_accuracy = torch.zeros(len(x_tst_list))
     #val_accuracy = torch.zeros(len(x_val_list))
-
-    loader_val = DataLoader(CustomDataset(x_val, y_val,transform=None),shuffle=False,\
-        batch_size=batch_size)
 
     loader_tst = DataLoader(CustomDataset(x_tst, y_tst,transform=None),shuffle=False,\
         batch_size=batch_size)
@@ -434,7 +478,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     mul = 1
     lr_count = 0
     #while (True):
-    for i in range(2000):
+    for i in range(1500):
 
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
         #inputs, targets = x_trn[sub_idxs], y_trn[sub_idxs]
@@ -690,7 +734,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
 print("Random with Constraints training time ",ending-starting, file=logfile)
@@ -720,6 +764,33 @@ print("Random training time ",ending-starting, file=logfile)
 methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
 methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
 #["Full"]#
+'''
+
+starting = time.process_time() 
+index =run_stochastic_Facloc(x_trn, y_trn, min(10000,len(y_trn)), bud,None,device=device)
+ending = time.process_time() 
+
+fac_loc_time = ending-starting
+
+starting = time.process_time() 
+facloc_fair = train_model_fair('Random', index)
+ending = time.process_time() 
+print("Facility location with Constraints training time ",ending-starting+fac_loc_time, file=logfile)
+
+curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
+
+starting = time.process_time() 
+facloc = train_model('Random', index,2000)
+ending = time.process_time() 
+print("Facility location time ",ending-starting+fac_loc_time, file=logfile)
+
+starting = time.process_time() 
+glister = train_model('Glister', rand_idxs,2000)
+ending = time.process_time() 
+print("Glister time ",ending-starting, file=logfile)
+
+methods =[facloc_fair,facloc,glister] #,[full]#full_fair,full,
+methods_names= ["Facility with Constraints","Facility","Glister"] #"Full with Cons
 
 for me in range(len(methods)):
     

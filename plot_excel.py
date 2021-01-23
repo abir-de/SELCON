@@ -13,9 +13,10 @@ import matplotlib.lines as mlines
 
 files = ['results/Whole/NY_Stock_exchange_close_100/combined_NY_Stock_exchange_close_5.0_all_frac.xlsx',\
    'results/Whole/NY_Stock_exchange_high_100/combined_NY_Stock_exchange_high_5.0_all_frac.xlsx',\
-    'results/Whole_server/MSD_no_full/combined_MSD_0.7_all_frac.xlsx']
+    'results/Whole_server/cadata/combined_cadata_0.3_all_frac.xlsx',\
+    'results/Whole_server/MSD_no_full/combined_MSD_0.7_all_frac.xlsx',\
+    'results/Whole_server/LawSchool/combined_LawSchool_0.04_all_frac.xlsx']
 
-#files = ['results/Whole_server/cadata_nofull_1m5/combined_cadata_0.3_all_frac.xlsx']
 
 #files = ['results/Whole/Community_Crime/combined_Community_Crime_0.03_all_frac.xlsx']
 
@@ -97,14 +98,14 @@ for file in files:
     whole_sheet = [[ele.value for ele in each] for each in acc]
     #print(acc)
 
-    time = np.array(whole_sheet[4:7],dtype=np.float32)
-    acc = np.array(whole_sheet[-3:],dtype=np.float32)
+    time = np.array(whole_sheet[4:9],dtype=np.float32)
+    acc = np.array(whole_sheet[-5:],dtype=np.float32)
 
     time[:,0] = time[:,0]*100
     acc[:,0] = acc[:,0]*100
 
-    #time = np.array(whole_sheet[4:6],dtype=np.float32)
-    #acc = np.array(whole_sheet[-2:],dtype=np.float32)
+    #time = np.array(whole_sheet[4:9],dtype=np.float32)
+    #acc = np.array(whole_sheet[-5:],dtype=np.float32)
 
     #print(time)
     #print(acc)
@@ -150,10 +151,13 @@ for file in files:
     time_unit_str = 'hrs.'#"min."
 
     for i in range(1,time.shape[1]):
+        if i == time.shape[1]-2:
+            clr+=1
+            continue
         ax.plot(time[:,0],time[:,i]/time_unit,label=good_labels[i-1],linewidth=5,markersize=4,color=color_list[clr])
         clr+=1
 
-    plt.ylabel(r'\textbf{Time (in'+time_unit_str+r')}$\rightarrow$', fontsize=20)
+    plt.ylabel(r'\textbf{Time (in '+time_unit_str+r')}$\rightarrow$', fontsize=20)
     print(file)
 
     plt.xlabel(r'\textbf{Budget (in \%)}$\rightarrow$', fontsize=20,labelpad=15)

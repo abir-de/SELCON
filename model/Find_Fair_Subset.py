@@ -1483,13 +1483,13 @@ class FindSubset_Vect(object):
                 +(val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas) #/rem_len'''
 
             abs_value = F_curr - (trn_losses + self.lam*reg*rem_len \
-                + (val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)
+                + (val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas) + 1e-4
 
             #print(trn_losses[:10], (self.lam*reg*rem_len)[:10],\
             #     ((val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)[:10])
             #print(abs_value[:10])
 
-            neg_ind = ((abs_value + 1e-4) < 0).nonzero().view(-1)
+            neg_ind = ((abs_value ) < 0).nonzero().view(-1)
 
             print(len(neg_ind))
             

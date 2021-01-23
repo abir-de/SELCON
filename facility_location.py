@@ -39,14 +39,14 @@ class SetFunctionFacLoc(object):
 
     def compute_score(self):
       self.N = 0
-      g_is = self.train_loader
+      g_is = []#self.train_loader
 
       with torch.no_grad():
-        '''for i, data_i in  enumerate(self.train_loader, 0):
+        for i, data_i in  enumerate(self.train_loader, 0):
           inputs_i, target_i = data_i
           inputs_i = inputs_i.to(self.device) #, target_i.to(self.device)
           self.N += inputs_i.size()[0]
-          g_is.append(inputs_i)'''
+          g_is.append(inputs_i)
         
         self.sim_mat = torch.zeros([self.N, self.N],dtype=torch.float32)
 
@@ -235,6 +235,7 @@ subprocess.run(["mkdir", "-p", all_logs_dir])
 path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
 logfile = open(path_logfile, 'w')
 
-index =run_stochastic_Facloc(x_trn, y_trn, 10000, budget,logfile,device=device)
+index =run_stochastic_Facloc(x_trn, y_trn, min(10000,len(y_trn)), budget,logfile,device=device)
 
-logfile.writelines(index)
+#logfile.writelines(index)
+print(index,file=logfile)
