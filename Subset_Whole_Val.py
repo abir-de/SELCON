@@ -16,7 +16,7 @@ from model.LinearRegression import RegressionNet, LogisticNet
 from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
 from facility_location import run_stochastic_Facloc
 
-from glister import Glister_Linear_SetFunction_RModular_Regression as GLISTER
+from model.glister import Glister_Linear_SetFunction_RModular_Regression as GLISTER
 
 from torch.utils.data import DataLoader
 
@@ -126,10 +126,10 @@ if data_name == "synthetic":
     all_logs_dir = './results/Whole/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 elif is_time:
-    all_logs_dir = './results/Whole/' + data_name +"_"+str(past_length)+'/' + str(fraction) +\
+    all_logs_dir = './results/Whole_fac_g/' + data_name +"_"+str(past_length)+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 else:
-    all_logs_dir = './results/Whole/' + data_name+'/' + str(fraction) +\
+    all_logs_dir = './results/Whole_fac_g/' + data_name+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 print(all_logs_dir)
 subprocess.run(["mkdir", "-p", all_logs_dir])
@@ -231,6 +231,9 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     loader_tr = DataLoader(CustomDataset(x_trn[np_sub_idxs], y_trn[np_sub_idxs],\
             transform=None),shuffle=False,batch_size=train_batch_size)
 
+    loader_full_tr = DataLoader(CustomDataset(x_trn, y_trn,transform=None),shuffle=False,\
+        batch_size=train_batch_size)
+
     loader_val = DataLoader(CustomDataset(x_val, y_val,transform=None),shuffle=False,\
         batch_size=batch_size)
 
@@ -240,7 +243,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         print("Starting Random with Prior Run!")
 
     elif func_name == "Glister":
-        glister = GLISTER(loader_tr, loader_val, main_model,learning_rate, device,'RGreedy')
+        glister = GLISTER(loader_full_tr, loader_val, main_model,learning_rate, device,'RGreedy')
         print("Starting glister of size ",fraction)
 
     stop_count = 0
@@ -250,7 +253,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     mul=1
     lr_count = 0
     #while(True):
-    for i in range(2000):#curr_epoch):#num_epochs):
+    for i in range(1500):#curr_epoch):#num_epochs):
         
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
         #inputs, targets = x_trn[idxs], y_trn[idxs]
@@ -295,7 +298,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
             if func_name == 'Glister':
 
-                d_sub_idxs = glister.select(bud,clone_dict)
+                d_sub_idxs = glister.select(bud,clone_dict,N)
 
                 new_ele = set(d_sub_idxs).difference(set(idxs))
                 print(len(new_ele),0.1*bud)
@@ -785,7 +788,7 @@ ending = time.process_time()
 print("Facility location time ",ending-starting+fac_loc_time, file=logfile)
 
 starting = time.process_time() 
-glister = train_model('Glister', rand_idxs,2000)
+glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
 print("Glister time ",ending-starting, file=logfile)
 
@@ -815,3 +818,4 @@ for me in range(len(methods)):
         print("|",methods[me][3][a],"|",methods[me][2][a],"|",file=logfile)'''
 
     #print('---------------------------------------------------------------------',file=logfile)
+logfile.close()

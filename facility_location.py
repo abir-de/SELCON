@@ -71,7 +71,7 @@ class SetFunctionFacLoc(object):
 
     def lazy_greedy_max(self, budget,logfile):
       
-      starting = time.process_time() 
+      #starting = time.process_time() 
       id_first = self.compute_score()
       self.gains = PriorityQueue()
       for i in range(self.N):
@@ -85,8 +85,8 @@ class SetFunctionFacLoc(object):
       greedyList = [id_first, second[1]]
       self.max_sim = torch.max(self.max_sim,self.sim_mat[second[1]].to(self.device))
 
-      ending = time.process_time()
-      print("Kernel computation time ",ending-starting, file=logfile)
+      #ending = time.process_time()
+      #print("Kernel computation time ",ending-starting, file=logfile)
 
       starting = time.process_time()
       while(numSelected < budget):
@@ -126,8 +126,8 @@ class SetFunctionFacLoc(object):
       #print()
       #gamma = self.compute_gamma(greedyList)
 
-      ending = time.process_time()
-      print("Selectio time ",ending-starting, file=logfile)
+      #ending = time.process_time()
+      #print("Selectio time ",ending-starting, file=logfile)
 
       return greedyList
 
@@ -171,7 +171,7 @@ def run_stochastic_Facloc( data, targets, sub_budget, budget,logfile,device='cpu
     return facloc_indices
 
 ## Convert to this argparse
-datadir = sys.argv[1]
+'''datadir = sys.argv[1]
 data_name = sys.argv[2]
 frac = float(sys.argv[3])
 is_time = bool(int(sys.argv[4]))
@@ -238,4 +238,4 @@ logfile = open(path_logfile, 'w')
 index =run_stochastic_Facloc(x_trn, y_trn, min(10000,len(y_trn)), budget,logfile,device=device)
 
 #logfile.writelines(index)
-print(index,file=logfile)
+print(index,file=logfile)'''

@@ -34,20 +34,21 @@ class Glister_Linear_SetFunction_RModular_Regression(object):
                     out, l1 = self.model(inputs, last=True)
                    
                 l0_grads = 2 * (out - targets)
-                l1_grads = l0_grads.repeat(1, embDim) * l1
+                l1_grads = l0_grads.view(-1,1).repeat(1, embDim) * l1
 
             else:
                 with torch.no_grad():
                     out, l1 = self.model(inputs, last=True)
 
-                l0_grads = 2 * (out - targets)
-                batch_l1_grads = l0_grads.repeat(1, embDim) * l1
+                batch_l0_grads = 2 * (out - targets)
+                batch_l1_grads = batch_l0_grads.view(-1,1).repeat(1, embDim) * l1
 
+                l0_grads = torch.cat((l0_grads, batch_l0_grads), dim=0)
                 l1_grads = torch.cat((l1_grads, batch_l1_grads), dim=0)
 
             torch.cuda.empty_cache()
 
-            self.grads_per_elem = l1_grads
+            self.grads_per_elem = torch.cat((l0_grads.view(-1,1), l1_grads), dim=1)
 
     def _update_grads_val(self, theta_init, grads_currX=None, first_init=False):
         self.model.zero_grad()
@@ -62,35 +63,43 @@ class Glister_Linear_SetFunction_RModular_Regression(object):
                         out, l1 = self.model(inputs, last=True)
 
                     l0_grads = 2 * (out - targets)
-                    l1_grads = l0_grads.repeat(1, embDim) * l1
+                    l1_grads = l0_grads.view(-1,1).repeat(1, embDim) * l1
 
                     self.init_out = out
                     self.init_l1 = l1
-                    self.y_val = targets.view(out.shape[0], -1)
+                    self.y_val = targets#.view(out.shape[0], -1)
 
                 else:
                     with torch.no_grad():
                         out, l1 = self.model(inputs, last=True)
 
-                    l0_grads = 2 * (out - targets)
-                    batch_l1_grads = l0_grads.repeat(1, embDim) * l1
+                    batch_l0_grads = 2 * (out - targets)
+                    batch_l1_grads = batch_l0_grads.view(-1,1).repeat(1, embDim) * l1
 
+                    l0_grads = torch.cat((l0_grads, batch_l0_grads), dim=0)
                     l1_grads = torch.cat((l1_grads, batch_l1_grads), dim=0)
 
                     self.init_out = torch.cat((self.init_out, out), dim=0)
                     self.init_l1 = torch.cat((self.init_l1, l1), dim=0)
-                    self.y_val = torch.cat((self.y_val, targets.view(out.shape[0], -1)), dim=0)
+                    self.y_val = torch.cat((self.y_val, targets), dim=0) #.view(out.shape[0], -1)
 
         elif grads_currX is not None:
             with torch.no_grad():
 
-                out_vec = self.init_out - (self.eta * self.init_out * grads_currX[0].view(1, -1))
+                out_vec = self.init_out - (
+                            self.eta * grads_currX[0][0:1].expand(self.init_out.shape[0]))
+
+                out_vec = out_vec - (self.eta * torch.matmul(self.init_l1, grads_currX[0][1:].view(
+                        -1, 1)).view(-1))
 
                 l0_grads = 2*(out_vec - self.y_val)
-                l1_grads = l0_grads.repeat(1, embDim) * l1
+                l1_grads = l0_grads.view(-1,1).repeat(1, embDim) *self.init_l1
+
+        
+        self.grads_val_curr = torch.mean(torch.cat((l0_grads.view(-1,1), l1_grads), dim=1),\
+             dim=0).view(-1, 1)
 
         torch.cuda.empty_cache()
-        self.grads_val_curr = torch.mean(l1_grads, dim=0).view(-1, 1)
 
     def eval_taylor_modular(self, grads):
         grads_val = self.grads_val_curr
@@ -105,14 +114,14 @@ class Glister_Linear_SetFunction_RModular_Regression(object):
 
     # Same as before i.e full batch case! No use of dataloaders here!
     # Everything is abstracted away in eval call
-    def  select(self, budget, model_params):
+    def  select(self, budget, model_params,N):
 
         #self.model.load_state_dict(model_params)
 
         self._compute_per_element_grads(model_params)
         self._update_grads_val(model_params,first_init=True)
         
-        
+        self.N_trn = N
         self.numSelected = 0
         greedySet = list()
         remainSet = list(range(self.N_trn))
@@ -136,7 +145,7 @@ class Glister_Linear_SetFunction_RModular_Regression(object):
                 else:  # If 1st selection, then just set it to bestId grads
                     self._update_gradients_subset(grads_currX, selected_indices)
                 # Update the grads_val_current using current greedySet grads
-                self._update_grads_val(grads_currX)
+                self._update_grads_val(model_params,grads_currX)
                 if self.numSelected % 1000 == 0:
                     # Printing bestGain and Selection time for 1 element.
                     print("numSelected:", self.numSelected, "Time for 1:", time.time() - t_one_elem)
@@ -165,7 +174,7 @@ class Glister_Linear_SetFunction_RModular_Regression(object):
                 else:  # If 1st selection, then just set it to bestId grads
                     grads_currX = self.grads_per_elem[bestId].view(1, -1)  # Making it a list so that is mutable!
                 # Update the grads_val_current using current greedySet grads
-                self._update_grads_val(grads_currX)
+                self._update_grads_val(model_params,grads_currX)
                 if (self.numSelected - 1) % 1000 == 0:
                     # Printing bestGain and Selection time for 1 element.
                     print("numSelected:", self.numSelected, "Time for 1:", time.time() - t_one_elem)
