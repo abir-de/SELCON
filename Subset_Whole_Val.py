@@ -139,7 +139,8 @@ subprocess.run(["mkdir", "-p", all_logs_dir])
 path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
 logfile = open(path_logfile, 'w')
 exp_name = data_name + '_fraction:' + str(fraction) + '_delta:' + str(delt) +\
-    '_epochs:' + str(num_epochs) + '_selEvery:' + str(select_every) + "_lambda" + str(reg_lambda)
+    '_epochs:' + str(num_epochs) + '_selEvery:' + str(select_every) + "_lambda" + str(reg_lambda)+\
+        "_rand_sub_size"+str(psuedo_length)
 
 path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
 modelfile = open(path_logfile, 'w')
