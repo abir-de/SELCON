@@ -829,17 +829,17 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
-print("Random with Constraints training time ",ending-starting, file=logfile)'''
+print("Random with Constraints training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 #full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
 #print("Full with Constraints training time ",ending-starting, file=logfile)
@@ -854,17 +854,17 @@ ending = time.process_time()
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,2000)
 ending = time.process_time() 
-print("Random training time ",ending-starting, file=logfile)'''
+print("Random training time ",ending-starting, file=logfile)
 
 #methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
 #methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
 #["Full"]#
 
-'''starting = time.process_time() 
-index =run_stochastic_Facloc(x_trn, y_trn, min(30000,len(y_trn)), bud,None,device=device)
+starting = time.process_time() 
+index =run_stochastic_Facloc(x_trn, y_trn, min(50000,len(y_trn)), bud,None,device=device)
 ending = time.process_time() 
 
-fac_loc_time = ending-starting'''
+fac_loc_time = ending-starting
 
 '''starting = time.process_time() 
 facloc_fair = train_model_fair('Random', index)
@@ -873,7 +873,7 @@ print("Facility location with Constraints training time ",ending-starting+fac_lo
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 facloc = train_model('Random', index,2000)
 ending = time.process_time() 
 print("Facility location time ",ending-starting+fac_loc_time, file=logfile)
@@ -881,12 +881,10 @@ print("Facility location time ",ending-starting+fac_loc_time, file=logfile)
 starting = time.process_time() 
 glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
-print("Glister time ",ending-starting, file=logfile)'''
+print("Glister time ",ending-starting, file=logfile)
 
-methods = [sub_fair]
-#[rand_fair,sub_fair,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
-methods_names= ["Subset with Constraints"]
-#["Random with Constraints","Subset with Constraints","Random","Facility","Glister"] #"Facility with Constraints"
+methods = [rand_fair,sub_fair,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
+methods_names= ["Random with Constraints","Subset with Constraints","Random","Facility","Glister"] #"Facility with Constraints"
 
 for me in range(len(methods)):
     
