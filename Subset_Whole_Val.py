@@ -398,7 +398,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
                 val_out = sc_trans.inverse_transform(val_out.cpu().numpy())
                 val_out = torch.from_numpy(val_out).float()'''
 
-            if batch_idx == 0:
+            if batch_idx[0] == 0:
                 e_val_loss = no_red_error(val_out, targets)
 
             else:
@@ -407,7 +407,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         
         #val_loss /= len(loader_val.batch_sampler)
         val_loss = torch.mean(e_val_loss)
-        print(list(e_val_loss.cpu()),file=modelfile)
+        print(list(e_val_loss.cpu().numpy()),file=modelfile)
 
         test_loss = 0.
         for batch_idx in list(loader_tst.batch_sampler):
@@ -421,7 +421,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
                 outputs = torch.from_numpy(outputs).float()'''
             #test_loss += criterion(outputs, targets)
 
-            if batch_idx == 0:
+            if batch_idx[0] == 0:
                 e_tst_loss = no_red_error(outputs, targets)
 
             else:
@@ -430,9 +430,11 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
         #test_loss /= len(loader_tst.batch_sampler)    
         test_loss = torch.mean(e_tst_loss)
-        print(list(e_tst_loss.cpu()),file=modelfile)    
+        test_loss_std = torch.std(e_tst_loss)
 
-    return [val_loss,test_loss] #[val_accuracy, val_classes, tst_accuracy, tst_classes]
+        print(list(e_tst_loss.cpu().numpy()),file=modelfile)    
+
+    return [val_loss,test_loss,test_loss_std] #[val_accuracy, val_classes, tst_accuracy, tst_classes]
 
 def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
@@ -754,6 +756,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         #val_loss = 0.
         for batch_idx in list(loader_val.batch_sampler):
             
+
             inputs, targets = loader_val.dataset[batch_idx]
             inputs, targets = inputs.to(device), targets.to(device)
         
@@ -762,7 +765,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 val_out = sc_trans.inverse_transform(val_out.cpu().numpy())
                 val_out = torch.from_numpy(val_out).float()'''
 
-            if batch_idx == 0:
+            if batch_idx[0] == 0:
                 e_val_loss = no_red_error(val_out, targets)
 
             else:
@@ -771,7 +774,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         
         #val_loss /= len(loader_val.batch_sampler)
         val_loss = torch.mean(e_val_loss)
-        print(list(e_val_loss.cpu()),file=modelfile)
+        print(list(e_val_loss.cpu().numpy()),file=modelfile)
 
         test_loss = 0.
         for batch_idx in list(loader_tst.batch_sampler):
@@ -785,7 +788,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 outputs = torch.from_numpy(outputs).float()'''
             #test_loss += criterion(outputs, targets)
 
-            if batch_idx == 0:
+            if batch_idx[0] == 0:
                 e_tst_loss = no_red_error(outputs, targets)
 
             else:
@@ -794,9 +797,10 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
         #test_loss /= len(loader_tst.batch_sampler)    
         test_loss = torch.mean(e_tst_loss)
-        print(list(e_tst_loss.cpu()),file=modelfile)    
+        test_loss_std = torch.std(e_tst_loss)
+        print(list(e_tst_loss.cpu().numpy()),file=modelfile)    
 
-    return [val_loss,test_loss,stop_epoch]#[val_accuracy, val_classes, tst_accuracy, tst_classes]
+    return [val_loss,test_loss,test_loss_std,stop_epoch]#[val_accuracy, val_classes, tst_accuracy, tst_classes]
 
 
 #np.random.seed(42)
@@ -840,10 +844,10 @@ ending = time.process_time()
 
 fac_loc_time = ending-starting
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 facloc_fair = train_model_fair('Random', index)
 ending = time.process_time() 
-print("Facility location with Constraints training time ",ending-starting+fac_loc_time, file=logfile)
+print("Facility location with Constraints training time ",ending-starting+fac_loc_time, file=logfile)'''
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
@@ -857,8 +861,8 @@ glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
 print("Glister time ",ending-starting, file=logfile)
 
-methods =[rand_fair,sub_fair,rand,facloc_fair,facloc,glister] #,[full]#full_fair,full,
-methods_names= ["Random with Constraints","Subset with Constraints","Random","Facility with Constraints","Facility","Glister"] 
+methods =[rand_fair,sub_fair,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
+methods_names= ["Random with Constraints","Subset with Constraints","Random","Facility","Glister"] #"Facility with Constraints"
 
 for me in range(len(methods)):
     
@@ -875,6 +879,7 @@ for me in range(len(methods)):
     #print('---------------------------------------------------------------------',file=logfile)
 
     print("Test Error","|",methods[me][1].item(),"|",file=logfile)
+    print("Test Error Std","|",methods[me][2].item(),"|",file=logfile)
     print('---------------------------------------------------------------------',file=logfile)
 
     '''print('|Class | Error|',file=logfile)

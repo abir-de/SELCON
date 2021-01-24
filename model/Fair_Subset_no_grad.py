@@ -292,7 +292,124 @@ class FindSubset_Vect_No_ValLoss(object):
 
     def precompute(self,f_pi_epoch,p_epoch,alphas):
 
-        main_optimizer = torch.optim.Adam([{'params': self.model.parameters()}], lr=self.lr)
+        main_optimizer = torch.optim.Adam([
+                {'params': self.model.parameters()}], lr=self.lr)
+                
+        dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=self.lr)
+
+        print("starting Pre compute")
+        #alphas = torch.rand_like(self.delta,requires_grad=True) 
+
+        #print(alphas)
+
+        #scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[10,20,40,100],\
+        #    gamma=0.5) #[e*2 for e in change]
+
+        #alphas.requires_grad = False
+        loader_val = DataLoader(CustomDataset(self.x_val, self.y_val,transform=None),\
+            shuffle=False,batch_size=self.batch_size)
+            
+
+        #Compute F_phi
+        #for i in range(f_pi_epoch):
+
+        prev_loss = 1000
+        stop_count = 0
+        i=0
+        
+        while(True):
+            
+            main_optimizer.zero_grad()
+            
+            '''l2_reg = 0
+            for param in self.model.parameters():
+                l2_reg += torch.norm(param)'''
+
+            #l = [torch.flatten(p) for p in main_model.parameters()]
+            #flat = torch.cat(l)
+            #l2_reg = torch.sum(flat*flat)
+            
+            constraint = 0. 
+            for batch_idx in list(loader_val.batch_sampler):
+                    
+                inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
+            
+                val_out = self.model(inputs)
+                constraint += self.criterion(val_out, targets)
+                
+            constraint /= len(loader_val.batch_sampler)
+            constraint = constraint - self.delta
+            multiplier = alphas*constraint #torch.dot(alphas,constraint)
+
+            loss = multiplier
+            self.F_phi = loss.item()
+            loss.backward()
+            
+            main_optimizer.step()
+            #scheduler.step()
+            
+            '''for param in self.model.parameters():
+                param.requires_grad = False
+            alphas.requires_grad = True'''
+
+            dual_optimizer.zero_grad()
+
+            constraint = 0.
+            for batch_idx in list(loader_val.batch_sampler):
+                    
+                inputs, targets = loader_val.dataset[batch_idx]
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
+            
+                val_out = self.model(inputs)
+                constraint += self.criterion(val_out, targets)
+            
+            constraint /= len(loader_val.batch_sampler)
+            constraint = constraint - self.delta
+            multiplier = -1.0*alphas*constraint #torch.dot(-1.0*alphas,constraint)
+            
+            multiplier.backward()
+            
+            dual_optimizer.step()
+
+            alphas.requires_grad = False
+            alphas.clamp_(min=0.0)
+            alphas.requires_grad = True
+            #print(alphas)
+
+            '''for param in self.model.parameters():
+                param.requires_grad = True'''
+
+            if loss.item() <= 0.:
+                break
+
+            #if i>= f_pi_epoch:
+            #    break
+
+            if abs(prev_loss - loss.item()) <= 1e-3 and stop_count >= 5:
+                break 
+            elif abs(prev_loss - loss.item()) <= 1e-3:
+                stop_count += 1
+            else:
+                stop_count = 0
+
+            prev_loss = loss.item()
+            i+=1
+
+            #if i % 50 == 0:
+            #    print(loss.item(),alphas,constraint)
+
+        print("Finishing F phi")
+
+        if loss.item() <= 0.:
+            alphas = torch.zeros_like(alphas)
+
+        print(loss.item())
+
+        l = [torch.flatten(p) for p in self.model.state_dict().values()]
+        flat = torch.cat(l).detach().clone()
+        
+        '''main_optimizer = torch.optim.Adam([{'params': self.model.parameters()}], lr=self.lr)
         
         alphas = torch.ones(alphas.shape) * 1e4
         x_val_ext = torch.cat((self.x_val,torch.ones(self.x_val.shape[0],device=self.device).view(-1,1))\
@@ -300,15 +417,15 @@ class FindSubset_Vect_No_ValLoss(object):
 
         yTy = torch.dot(self.y_val,self.y_val)
         
-        yTX = alphas*torch.matmul(self.y_val.view(1,-1),x_val_ext)
+        #yTX = alphas*torch.matmul(self.y_val.view(1,-1),x_val_ext)
 
         XTX = torch.inverse(alphas*torch.matmul(x_val_ext.T,x_val_ext))
 
-        XTy = alphas*torch.matmul(x_val_ext,self.y_val.view(-1,1))
+        XTy = alphas*torch.matmul(x_val_ext.T,self.y_val.view(-1,1))
 
-        accum = torch.matmul( torch.matmul(yTX,XTX), XTy)
+        accum = torch.matmul(XTX, XTy) #torch.matmul(XTy,XTX)
 
-        flat = alphas*yTy - alphas*self.delta - accum
+        flat = alphas*yTy - alphas*self.delta - accum'''
         
         self.F_values = torch.zeros(len(self.x_trn),device=self.device)
 
@@ -317,10 +434,10 @@ class FindSubset_Vect_No_ValLoss(object):
         #main_optimizer.param_groups[0]['eps']
 
         loader_tr = DataLoader(CustomDataset_WithId(self.x_trn, self.y_trn,\
-            transform=None),shuffle=False,batch_size=self.batch_size*50)
+            transform=None),shuffle=False,batch_size=self.batch_size*20)
 
         loader_val = DataLoader(CustomDataset(self.x_val, self.y_val,transform=None),\
-            shuffle=False,batch_size=self.batch_size*50)
+            shuffle=False,batch_size=self.batch_size*20)
         
         for batch_idx in list(loader_tr.batch_sampler):
 
@@ -329,7 +446,7 @@ class FindSubset_Vect_No_ValLoss(object):
 
             ele_delta = self.delta.repeat(targets.shape[0]).to(self.device)
         
-            weights = flat.repeat(targets.shape[0], 1)
+            weights = flat.view(1,-1).repeat(targets.shape[0], 1)
             ele_alphas = alphas.detach().repeat(targets.shape[0]).to(self.device)
             #print(weights.shape)
 
@@ -391,7 +508,7 @@ class FindSubset_Vect_No_ValLoss(object):
 
                 bias_correction1 *= beta1
                 bias_correction2 *= beta2
-                step_size = (self.lr/1e2) * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
+                step_size = (self.lr) * math.sqrt(1.0-bias_correction2) / (1.0-bias_correction1)
                 weights.addcdiv_(-step_size, exp_avg_w, denom)
                 
                 #weights = weights - self.lr*(weight_grad)
@@ -442,11 +559,16 @@ class FindSubset_Vect_No_ValLoss(object):
                 inputs_val, targets_val = inputs_val.to(self.device), targets_val.to(self.device)
 
                 exten_val = torch.cat((inputs_val,torch.ones(inputs_val.shape[0],device=self.device).view(-1,1)),dim=1)
-                exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size,targets.shape[0]))
+                #exten_val_y = targets_val.view(-1,1).repeat(1,min(self.batch_size*20,targets.shape[0]))
                 
-                val_loss = torch.matmul(exten_val,torch.transpose(weights, 0, 1)) - exten_val_y
+                exten_val_y = torch.mean(targets_val).repeat(min(self.batch_size*20,targets.shape[0]))
 
-                val_losses+= torch.mean(val_loss*val_loss,dim=0)
+                #val_loss = torch.matmul(torch.mean(exten_val,dim=0),weights.T).view(-1) - exten_val_y 
+                #torch.transpose(weights, 0, 1)
+
+                val_loss = torch.sum(weights*torch.mean(exten_val,dim=0),dim=1) - exten_val_y
+
+                val_losses+= val_loss*val_loss #torch.mean(val_loss*val_loss,dim=0)
             
             reg = torch.sum(weights*weights,dim=1)
             trn_loss = torch.sum(exten_inp*weights,dim=1) - targets
@@ -455,8 +577,8 @@ class FindSubset_Vect_No_ValLoss(object):
             #print((trn_loss*trn_loss)[0],self.lam*reg[0],\
             #    ((torch.mean(val_loss*val_loss,dim=0)-ele_delta)*ele_alphas)[0])
 
-            self.F_values[idxs] = trn_loss*trn_loss+ self.lam*reg +\
-                (val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas
+            self.F_values[idxs] = trn_loss*trn_loss+ self.lam*reg +torch.max(torch.zeros_like(ele_alphas),\
+                (val_losses/len(loader_val.batch_sampler)-ele_delta)*ele_alphas)
 
         print(self.F_values[:10])
 
