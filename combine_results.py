@@ -57,12 +57,14 @@ for sel in selection:
 
                 tim = [i.strip() for i in line.strip().split(" ")]
 
-                if tim[0] in ["Subset","Random","Full"]:
+                if tim[0] in ["Subset","Random","Full","Facility","Glister"]:
 
                     if len(tim) > 3:
                         if first:
                             if tim[2] in ["Constraints","fairness"]:
                                 time[0].append(tim[0]+" "+tim[1]+" "+tim[2])
+                            elif tim[3] in ["Constraints","fairness"]:
+                                time[0].append(tim[0]+" "+tim[2]+" "+tim[3])
                             else:
                                 time[0].append(tim[0])
                         time[delta+1].append(float(tim[-1]))

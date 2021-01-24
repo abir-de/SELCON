@@ -200,7 +200,7 @@ class Glister_Linear_SetFunction_RModular_Regression(object):
                 else:  # If 1st selection, then just set it to bestId grads
                     self._update_gradients_subset(grads_currX, bestId)
                 # Update the grads_val_current using current greedySet grads
-                self._update_grads_val(grads_currX)
+                self._update_grads_val(model_params,grads_currX)
                 if (self.numSelected - 1) % 1000 == 0:
                     # Printing bestGain and Selection time for 1 element.
                     print("numSelected:", self.numSelected, "Time for 1:", time.time() - t_one_elem)

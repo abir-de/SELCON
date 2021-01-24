@@ -13,7 +13,8 @@ from sklearn.model_selection import train_test_split
 from utils.custom_dataset import load_std_regress_data,CustomDataset,load_dataset_custom
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
-from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
+#from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
+from model.Fair_Subset_no_grad import FindSubset_Vect_No_ValLoss as FindSubset_Vect
 from facility_location import run_stochastic_Facloc
 
 from model.glister import Glister_Linear_SetFunction_RModular_Regression as GLISTER
@@ -126,21 +127,31 @@ if data_name == "synthetic":
     all_logs_dir = './results/Whole/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 elif is_time:
-    all_logs_dir = './results/Whole_fac_g/' + data_name +"_"+str(past_length)+'/' + str(fraction) +\
+    all_logs_dir = './results/Whole/' + data_name +"_"+str(past_length)+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 else:
-    all_logs_dir = './results/Whole_fac_g/' + data_name+'/' + str(fraction) +\
+    all_logs_dir = './results/Whole/' + data_name+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 print(all_logs_dir)
 subprocess.run(["mkdir", "-p", all_logs_dir])
 path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
 logfile = open(path_logfile, 'w')
 exp_name = data_name + '_fraction:' + str(fraction) + '_delta:' + str(delt) +\
-    '_epochs:' + str(num_epochs) + '_selEvery:' + str(select_every)
+    '_epochs:' + str(num_epochs) + '_selEvery:' + str(select_every) + "_lambda" + str(reg_lambda)
+
+path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
+modelfile = open(path_logfile, 'w')
+
 print(exp_name)
 exp_start_time = datetime.datetime.now()
 print("=======================================", file=logfile)
 print(exp_name, str(exp_start_time), file=logfile)
+
+print("=======================================", file=modelfile)
+print(exp_name, str(exp_start_time), file=modelfile)
+
+path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
+modelfile = open(path_logfile, 'w')
 
 #fullset, data_dims = load_dataset_custom(datadir, data_name, True) # valset, testset,
 
@@ -243,7 +254,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         print("Starting Random with Prior Run!")
 
     elif func_name == "Glister":
-        glister = GLISTER(loader_full_tr, loader_val, main_model,learning_rate, device,'RGreedy')
+        glister = GLISTER(loader_full_tr, loader_val, main_model,learning_rate, device,'RGreedy',r=5)
         print("Starting glister of size ",fraction)
 
     stop_count = 0
@@ -356,10 +367,19 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     #tst_accuracy = torch.zeros(len(x_tst_list))
     #val_accuracy = torch.zeros(len(x_val_list))
 
+    no_red_error = torch.nn.MSELoss(reduction='none')
+    
     loader_tst = DataLoader(CustomDataset(x_tst, y_tst,transform=None),shuffle=False,\
         batch_size=batch_size)
     
     main_model.eval()
+
+    l = [torch.flatten(p) for p in main_model.parameters()]
+    flat = torch.cat(l)
+
+    print(func_name,len(idxs),file=modelfile)
+    print(flat,file=modelfile)
+    
     with torch.no_grad():
         '''full_trn_out = main_model(x_trn)
         full_trn_loss = criterion(full_trn_out, y_trn)
@@ -367,7 +387,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         sub_trn_loss = criterion(sub_trn_out, y_trn[idxs])
         print("\nFinal SubsetTrn and FullTrn Loss:", sub_trn_loss.item(),full_trn_loss.item(),file=logfile)'''
         
-        val_loss = 0.
+        #val_loss = 0.
         for batch_idx in list(loader_val.batch_sampler):
             
             inputs, targets = loader_val.dataset[batch_idx]
@@ -377,9 +397,17 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             '''if is_time:
                 val_out = sc_trans.inverse_transform(val_out.cpu().numpy())
                 val_out = torch.from_numpy(val_out).float()'''
-            val_loss += criterion(val_out, targets)
+
+            if batch_idx == 0:
+                e_val_loss = no_red_error(val_out, targets)
+
+            else:
+                batch_val_loss = no_red_error(val_out, targets)
+                e_val_loss = torch.cat((e_val_loss, batch_val_loss),dim= 0)
         
-        val_loss /= len(loader_val.batch_sampler)
+        #val_loss /= len(loader_val.batch_sampler)
+        val_loss = torch.mean(e_val_loss)
+        print(list(e_val_loss.cpu()),file=modelfile)
 
         test_loss = 0.
         for batch_idx in list(loader_tst.batch_sampler):
@@ -391,9 +419,18 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             '''if is_time:
                 outputs = sc_trans.inverse_transform(outputs.cpu().numpy())
                 outputs = torch.from_numpy(outputs).float()'''
-            test_loss += criterion(outputs, targets)
+            #test_loss += criterion(outputs, targets)
 
-        test_loss /= len(loader_tst.batch_sampler)        
+            if batch_idx == 0:
+                e_tst_loss = no_red_error(outputs, targets)
+
+            else:
+                batch_tst_loss = no_red_error(outputs, targets)
+                e_tst_loss = torch.cat((e_tst_loss, batch_tst_loss),dim= 0)
+
+        #test_loss /= len(loader_tst.batch_sampler)    
+        test_loss = torch.mean(e_tst_loss)
+        print(list(e_tst_loss.cpu()),file=modelfile)    
 
     return [val_loss,test_loss] #[val_accuracy, val_classes, tst_accuracy, tst_classes]
 
@@ -694,7 +731,19 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         
     #print(constraint)
     #print(alphas)
+    no_red_error = torch.nn.MSELoss(reduction='none')
+    
+    #loader_tst = DataLoader(CustomDataset(x_tst, y_tst,transform=None),shuffle=False,\
+    #    batch_size=batch_size)
+    
     main_model.eval()
+
+    l = [torch.flatten(p) for p in main_model.parameters()]
+    flat = torch.cat(l)
+
+    print(func_name,len(sub_idxs),file=modelfile)
+    print(flat,file=modelfile)
+    
     with torch.no_grad():
         '''full_trn_out = main_model(x_trn)
         full_trn_loss = criterion(full_trn_out, y_trn)
@@ -702,7 +751,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         sub_trn_loss = criterion(sub_trn_out, y_trn[idxs])
         print("\nFinal SubsetTrn and FullTrn Loss:", sub_trn_loss.item(),full_trn_loss.item(),file=logfile)'''
         
-        val_loss = 0.
+        #val_loss = 0.
         for batch_idx in list(loader_val.batch_sampler):
             
             inputs, targets = loader_val.dataset[batch_idx]
@@ -712,9 +761,17 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             '''if is_time:
                 val_out = sc_trans.inverse_transform(val_out.cpu().numpy())
                 val_out = torch.from_numpy(val_out).float()'''
-            val_loss += criterion(val_out, targets)
+
+            if batch_idx == 0:
+                e_val_loss = no_red_error(val_out, targets)
+
+            else:
+                batch_val_loss = no_red_error(val_out, targets)
+                e_val_loss = torch.cat((e_val_loss, batch_val_loss),dim= 0)
         
-        val_loss /= len(loader_val.batch_sampler)
+        #val_loss /= len(loader_val.batch_sampler)
+        val_loss = torch.mean(e_val_loss)
+        print(list(e_val_loss.cpu()),file=modelfile)
 
         test_loss = 0.
         for batch_idx in list(loader_tst.batch_sampler):
@@ -726,9 +783,18 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             '''if is_time:
                 outputs = sc_trans.inverse_transform(outputs.cpu().numpy())
                 outputs = torch.from_numpy(outputs).float()'''
-            test_loss += criterion(outputs, targets)
+            #test_loss += criterion(outputs, targets)
 
-        test_loss /= len(loader_tst.batch_sampler) 
+            if batch_idx == 0:
+                e_tst_loss = no_red_error(outputs, targets)
+
+            else:
+                batch_tst_loss = no_red_error(outputs, targets)
+                e_tst_loss = torch.cat((e_tst_loss, batch_tst_loss),dim= 0)
+
+        #test_loss /= len(loader_tst.batch_sampler)    
+        test_loss = torch.mean(e_tst_loss)
+        print(list(e_tst_loss.cpu()),file=modelfile)    
 
     return [val_loss,test_loss,stop_epoch]#[val_accuracy, val_classes, tst_accuracy, tst_classes]
 
@@ -737,7 +803,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
 print("Random with Constraints training time ",ending-starting, file=logfile)
@@ -748,29 +814,28 @@ ending = time.process_time()
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-full_fair = train_model_fair('Random', [i for i in range(N)])
+#full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
-print("Full with Constraints training time ",ending-starting, file=logfile)
+#print("Full with Constraints training time ",ending-starting, file=logfile)
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
 starting = time.process_time() 
-full = train_model('Random', [i for i in range(N)],2000)
+#full = train_model('Random', [i for i in range(N)],2000)
 ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)
+#print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,2000)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
-methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
+#methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
+#methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
 #["Full"]#
-'''
 
 starting = time.process_time() 
-index =run_stochastic_Facloc(x_trn, y_trn, min(10000,len(y_trn)), bud,None,device=device)
+index =run_stochastic_Facloc(x_trn, y_trn, min(30000,len(y_trn)), bud,None,device=device)
 ending = time.process_time() 
 
 fac_loc_time = ending-starting
@@ -792,8 +857,8 @@ glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
 print("Glister time ",ending-starting, file=logfile)
 
-methods =[facloc_fair,facloc,glister] #,[full]#full_fair,full,
-methods_names= ["Facility with Constraints","Facility","Glister"] #"Full with Cons
+methods =[rand_fair,sub_fair,rand,facloc_fair,facloc,glister] #,[full]#full_fair,full,
+methods_names= ["Random with Constraints","Subset with Constraints","Random","Facility with Constraints","Facility","Glister"] 
 
 for me in range(len(methods)):
     
@@ -819,3 +884,4 @@ for me in range(len(methods)):
 
     #print('---------------------------------------------------------------------',file=logfile)
 logfile.close()
+modelfile.close()
