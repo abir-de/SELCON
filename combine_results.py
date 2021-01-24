@@ -53,11 +53,15 @@ for sel in selection:
 
             line = fp.readline()
 
+            print(line)
+
             while line:
 
                 tim = [i.strip() for i in line.strip().split(" ")]
 
                 if tim[0] in ["Subset","Random","Full","Facility","Glister"]:
+
+                    print(line)
 
                     if len(tim) > 3:
                         if first:
@@ -84,7 +88,9 @@ for sel in selection:
 
                         line = fp.readline()
                         acc = [i.strip() for i in line.strip()[:-1].split("|")]
-                        test_acc[delta+1].append(float(acc[-1]))                    
+                        test_acc[delta+1].append(float(acc[-1])) 
+
+
 
                 line = fp.readline()
         

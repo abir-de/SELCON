@@ -5,12 +5,14 @@ datadir = '../Datasets/data//NY_Stock_exchange'
 
 datasets = ["NY_Stock_exchange_close"]
 
-fracs =[0.001,0.05,0.01]
-num_epochs = 2000#2500#1000
+fracs =[0.001,0.003,0.005,0.007,0.01]
+num_epochs = 5000#2500#1000
 select_every = [35]#,35,50]
 reg_lambda = [1e-5]
-deltas = [i/10 for i in range(10,0,-1)] #10
-past_length = 300
+deltas = [5.0]#[i/10 for i in range(10,0,-1)] #10
+past_length = 100
+
+psuedo_length = 1.0
 
 for dset in datasets:
     for sel in select_every:
@@ -28,5 +30,6 @@ for dset in datasets:
                     args.append(str(delt))
                     args.append('1')
                     args.append(str(past_length))
+                    args.append(str(psuedo_length))
                     print(args)
                     subprocess.run(args)

@@ -57,6 +57,8 @@ is_time = bool(int(sys.argv[8]))
 if is_time:
     past_length = int(sys.argv[9])
 
+psuedo_length = float(sys.argv[10])
+
 sub_epoch = 3 #5
 
 batch_size = 4000#1000
@@ -194,6 +196,9 @@ elif data_name == 'German_credit':
 
 #change = [50,100,200,550]
 
+N_val, M_val = x_val.shape
+print("Validation set Acccuracy",N_val,M_val)
+
 N, M = x_trn.shape
 bud = int(fraction * N)
 print("Budget, fraction and N:", bud, fraction, N)#,valset[0].shape)
@@ -254,7 +259,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         print("Starting Random with Prior Run!")
 
     elif func_name == "Glister":
-        glister = GLISTER(loader_full_tr, loader_val, main_model,learning_rate, device,'RGreedy',r=5)
+        glister = GLISTER(loader_full_tr, loader_val, main_model,learning_rate, device,'RGreedy',r=1)
         print("Starting glister of size ",fraction)
 
     stop_count = 0
@@ -264,7 +269,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     mul=1
     lr_count = 0
     #while(True):
-    for i in range(1500):#curr_epoch):#num_epochs):
+    for i in range(num_epochs):#curr_epoch):#num_epochs):
         
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
         #inputs, targets = x_trn[idxs], y_trn[idxs]
@@ -471,7 +476,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
     #alphas.requires_grad = False
 
-    #delta_extend = torch.repeat_interleave(deltas,val_size, dim=0)
+    #delta_extend = torch.repeat_interleave(deltas,val_size, dim=0)    
 
     if func_name == 'Random':
         print("Starting Random with fairness Run!")
@@ -480,8 +485,20 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         cached_state_dict = copy.deepcopy(main_model.state_dict())
         alpha_orig = copy.deepcopy(alphas)
 
-        fsubset_d = FindSubset_Vect(x_trn, y_trn, x_val, y_val,main_model,criterion,\
-            device,deltas,learning_rate,reg_lambda,batch_size)
+        if psuedo_length == 1.0:
+            sub_rand_idxs = [s for s in range(N)]
+            current_idxs = sub_idxs
+        else:
+            sub_rand_idxs = [s for s in range(N)]
+            new_ele = set(sub_rand_idxs).difference(set(sub_idxs))
+            sub_rand_idxs = list(np.random.choice(new_ele, size=int(psuedo_length*N), replace=False))
+            
+            sub_rand_idxs = sub_idxs + sub_rand_idxs
+
+            current_idxs = [s for s in range(len(sub_idxs))]
+
+        fsubset_d = FindSubset_Vect(x_trn[sub_rand_idxs], y_trn[sub_rand_idxs], x_val, y_val,main_model,\
+            criterion,device,deltas,learning_rate,reg_lambda,batch_size)
 
         fsubset_d.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
 
@@ -520,7 +537,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     mul = 1
     lr_count = 0
     #while (True):
-    for i in range(1500):
+    for i in range(num_epochs):
 
         # inputs, targets = x_trn[idxs].to(device), y_trn[idxs].to(device)
         #inputs, targets = x_trn[sub_idxs], y_trn[sub_idxs]
@@ -654,7 +671,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             if func_name == 'Fair_subset':
 
-                d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
+                d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,current_idxs,alpha_orig,bud,\
                     train_batch_size)
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
@@ -663,6 +680,10 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
                     train_batch_size)
                 print(sub_idxs[:10])'''
+
+                current_idxs = d_sub_idxs
+
+                d_sub_idxs = list(np.array(sub_rand_idxs)[d_sub_idxs])
 
                 new_ele = set(d_sub_idxs).difference(set(sub_idxs))
                 print(len(new_ele),0.1*bud)
@@ -807,17 +828,17 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
-print("Random with Constraints training time ",ending-starting, file=logfile)
+print("Random with Constraints training time ",ending-starting, file=logfile)'''
 
 starting = time.process_time() 
 sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 #full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
 #print("Full with Constraints training time ",ending-starting, file=logfile)
@@ -832,17 +853,17 @@ ending = time.process_time()
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,2000)
 ending = time.process_time() 
-print("Random training time ",ending-starting, file=logfile)
+print("Random training time ",ending-starting, file=logfile)'''
 
 #methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
 #methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
 #["Full"]#
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 index =run_stochastic_Facloc(x_trn, y_trn, min(30000,len(y_trn)), bud,None,device=device)
 ending = time.process_time() 
 
-fac_loc_time = ending-starting
+fac_loc_time = ending-starting'''
 
 '''starting = time.process_time() 
 facloc_fair = train_model_fair('Random', index)
@@ -851,7 +872,7 @@ print("Facility location with Constraints training time ",ending-starting+fac_lo
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 facloc = train_model('Random', index,2000)
 ending = time.process_time() 
 print("Facility location time ",ending-starting+fac_loc_time, file=logfile)
@@ -859,10 +880,12 @@ print("Facility location time ",ending-starting+fac_loc_time, file=logfile)
 starting = time.process_time() 
 glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
-print("Glister time ",ending-starting, file=logfile)
+print("Glister time ",ending-starting, file=logfile)'''
 
-methods =[rand_fair,sub_fair,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
-methods_names= ["Random with Constraints","Subset with Constraints","Random","Facility","Glister"] #"Facility with Constraints"
+methods = [sub_fair]
+#[rand_fair,sub_fair,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
+methods_names= ["Subset with Constraints"]
+#["Random with Constraints","Subset with Constraints","Random","Facility","Glister"] #"Facility with Constraints"
 
 for me in range(len(methods)):
     
