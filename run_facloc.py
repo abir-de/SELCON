@@ -13,6 +13,7 @@ fracs =0.01#[0.001,0.004,0.05,0.006,0.01]
 #deltas = [i/10 for i in range(10,0,-1)] #10
 past_length = 300
 
+
 for dset in datasets:
     #for f in fracs:
             

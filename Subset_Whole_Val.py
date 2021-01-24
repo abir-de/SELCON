@@ -54,10 +54,9 @@ select_every = int(sys.argv[5])
 reg_lambda = float(sys.argv[6])
 delt = float(sys.argv[7])
 is_time = bool(int(sys.argv[8]))
+psuedo_length = float(sys.argv[9])
 if is_time:
-    past_length = int(sys.argv[9])
-
-psuedo_length = float(sys.argv[10])
+    past_length = int(sys.argv[10])
 
 sub_epoch = 3 #5
 
@@ -492,7 +491,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         else:
             sub_rand_idxs = [s for s in range(N)]
             new_ele = set(sub_rand_idxs).difference(set(sub_idxs))
-            sub_rand_idxs = list(np.random.choice(new_ele, size=int(psuedo_length*N), replace=False))
+            sub_rand_idxs = list(np.random.choice(list(new_ele), size=int(psuedo_length*N), replace=False))
             
             sub_rand_idxs = sub_idxs + sub_rand_idxs
 

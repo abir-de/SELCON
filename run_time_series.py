@@ -29,7 +29,7 @@ for dset in datasets:
                     args.append(str(r))
                     args.append(str(delt))
                     args.append('1')
-                    args.append(str(past_length))
                     args.append(str(psuedo_length))
+                    args.append(str(past_length))
                     print(args)
                     subprocess.run(args)

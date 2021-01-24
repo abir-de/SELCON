@@ -23,6 +23,8 @@ select_every = [35]#,35,50]
 reg_lambda = [1e-5]
 deltas = [i/100 for i in range(10,0,-1)] #10
 
+psuedo_length = 1.0
+
 for dset in datasets:
     for sel in select_every:
         for f in fracs:
@@ -41,5 +43,6 @@ for dset in datasets:
                     args.append(str(r))
                     args.append(str(delt))
                     args.append('0')
+                    args.append(str(psuedo_length))
                     print(args)
                     subprocess.run(args)
