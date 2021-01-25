@@ -53,7 +53,7 @@ for sel in selection:
 
             line = fp.readline()
 
-            print(line)
+            #print(line)
 
             while line:
 
@@ -61,7 +61,7 @@ for sel in selection:
 
                 if tim[0] in ["Subset","Random","Full","Facility","Glister"]:
 
-                    print(line)
+                    #print(line)
 
                     if len(tim) > 3:
                         if first:

@@ -662,7 +662,7 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
     if dset_name == "MSD":
         tst_file = os.path.join(datadir, 'YearPredictionMSD.t')
         x_tst, y_tst  = libsvm_file_load(tst_file,90)
-        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.03, random_state=42)
+        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.003, random_state=42)
     else:
         x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
         x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
