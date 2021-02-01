@@ -15,7 +15,7 @@ from utils.Create_Slices import get_slices
 #from model.LinearRegression import RegressionNet, LogisticNet
 from model.TwoLayer import TwoLayerNet
 #from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
-from model.Fair_Subset_Deep import FindSubset_Vect_Deep as FindSubset_Vect,FindSubset_Vect_TrnLoss_Deep
+from model.Fair_Subset_Deep import FindSubset_Vect_Deep_rePre as FindSubset_Vect,FindSubset_Vect_TrnLoss_Deep
 from facility_location import run_stochastic_Facloc
 
 from model.glister import Glister_Linear_SetFunction_RModular_Regression as GLISTER
@@ -723,7 +723,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             if func_name == 'Fair_subset':
 
-                '''fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul
+                fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul
 
                 state_values = list(main_optimizer.state.values())
                 step = state_values[0]['step'] #0
@@ -734,15 +734,15 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 state_values = list(dual_optimizer.state.values())
                 
                 a_exp_avg = state_values[0]['exp_avg'] 
-                a_exp_avg_sq = state_values[0]['exp_avg_sq']'''
+                a_exp_avg_sq = state_values[0]['exp_avg_sq']
                 
-                fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-3)
+                '''fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-3)
 
                 step = 0
                 w_exp_avg = torch.zeros(hidden_units+1,device=device)
                 w_exp_avg_sq = torch.zeros(hidden_units+1,device=device)
                 a_exp_avg = torch.zeros(1,device=device)
-                a_exp_avg_sq = torch.zeros(1,device=device)
+                a_exp_avg_sq = torch.zeros(1,device=device)'''
 
                 #print(exp_avg,exp_avg_sq)
 
