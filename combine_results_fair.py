@@ -87,23 +87,29 @@ for sel in selection:
                         
                         val_acc[delta+1].append(sum(acc_list))#max(acc_list)- min(acc_list)) #
 
-                        for _ in range(6):
+                        for _ in range(4):
                             line = fp.readline()
 
-                        acc_list = []
+                        '''acc_list = []
                         for sl in range(no_of_slices):
                             line = fp.readline()
                             #print(line)
                             acc = [i.strip() for i in line.strip()[:-1].split("|")]
                             acc_list.append(float(acc[-1]))#acc[-1].split('(')[1][:-1]))      
                         #print(max(acc_list),min(acc_list),in_dir[delta])    
-                        test_acc[delta+1].append(sum(acc_list))#max(acc_list)-min(acc_list)) #
+                        test_acc[delta+1].append(sum(acc_list))#max(acc_list)-min(acc_list)) #'''
+
+                        acc_list =[]
+                        line = fp.readline()
+                        #print(line)
+                        acc = [i.strip() for i in line.strip()[:-1].split("|")]  
+                        test_acc[delta+1].append(float(acc[-1]))
 
                 line = fp.readline()
         
         first = False
 
-    #print(val_acc)
+    #print(len(val_acc))
 
     if len(val_acc) > 0:
 
@@ -113,6 +119,7 @@ for sel in selection:
             line = ""
             for i in tim:
                 line = line + str(i)+"|" 
+            #print(line)
             print(line,file=logfile)
         
         print("\nValidation Accuracies",file=logfile)

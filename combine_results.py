@@ -3,7 +3,7 @@ import os
 import sys
 import copy
 
-data_name = sys.argv[2]
+"""data_name = sys.argv[2]
 directory = sys.argv[1]
 frac= sys.argv[3]
 
@@ -26,6 +26,7 @@ for sel in selection:
 
     val_acc = [[] for _ in range(len(in_dir)+1)]
     test_acc = [[] for _ in range(len(in_dir)+1)]
+    test_std = [[] for _ in range(len(in_dir)+1)]
     time =[[] for _ in range(len(in_dir)+1)]
 
     first = True
@@ -33,6 +34,7 @@ for sel in selection:
     time[0].append(" ")
     val_acc[0].append(" ")
     test_acc[0].append(" ")
+    test_std[0].append(" ")
 
     for delta in range(len(in_dir)):
 
@@ -50,6 +52,7 @@ for sel in selection:
             time[delta+1].append(float(in_dir[delta]))
             val_acc[delta+1].append(float(in_dir[delta]))
             test_acc[delta+1].append(float(in_dir[delta]))
+            test_std[delta+1].append(float(in_dir[delta]))
 
             line = fp.readline()
 
@@ -78,9 +81,11 @@ for sel in selection:
                             if len(tim) == 3:
                                 val_acc[0].append(tim[0]+" "+tim[1]+" "+tim[2])
                                 test_acc[0].append(tim[0]+" "+tim[1]+" "+tim[2])
+                                test_std[0].append(tim[0]+" "+tim[1]+" "+tim[2])
                             else:
                                 val_acc[0].append(tim[0])
                                 test_acc[0].append(tim[0])
+                                test_std[0].append(tim[0])
                         
                         line = fp.readline()
                         acc = [i.strip() for i in line.strip()[:-1].split("|")]
@@ -89,7 +94,9 @@ for sel in selection:
                         line = fp.readline()
                         acc = [i.strip() for i in line.strip()[:-1].split("|")]
                         test_acc[delta+1].append(float(acc[-1])) 
-
+                        line = fp.readline()
+                        acc = [i.strip() for i in line.strip()[:-1].split("|")]
+                        test_std[delta+1].append(float(acc[-1])) 
 
 
                 line = fp.readline()
@@ -122,7 +129,15 @@ for sel in selection:
                 line = line + str(i)+"|" 
             print(line,file=logfile)
 
-'''data_name = sys.argv[2]
+        print("\nTest Std",file=logfile)
+        
+        for acc in test_std:
+            line = ""
+            for i in acc:
+                line = line + str(i)+"|" 
+            print(line,file=logfile)"""
+
+data_name = sys.argv[2]
 directory = sys.argv[1]
 frac= sys.argv[3]
 
@@ -145,6 +160,7 @@ for sel in selection:
 
     val_acc = [[] for _ in range(len(in_dir)+1)]
     test_acc = [[] for _ in range(len(in_dir)+1)]
+    test_std = [[] for _ in range(len(in_dir)+1)]
     time =[[] for _ in range(len(in_dir)+1)]
 
     first = True
@@ -152,6 +168,7 @@ for sel in selection:
     time[0].append(" ")
     val_acc[0].append(" ")
     test_acc[0].append(" ")
+    test_std[0].append(" ")
 
     for delta in range(len(in_dir)):
 
@@ -165,6 +182,7 @@ for sel in selection:
             time[delta+1].append(float(in_dir[delta]))
             val_acc[delta+1].append(float(in_dir[delta]))
             test_acc[delta+1].append(float(in_dir[delta]))
+            test_std[delta+1].append(float(in_dir[delta]))
 
             line = fp.readline()
 
@@ -187,9 +205,11 @@ for sel in selection:
                             if len(tim) == 3:
                                 val_acc[0].append(tim[0]+" "+tim[1]+" "+tim[2])
                                 test_acc[0].append(tim[0]+" "+tim[1]+" "+tim[2])
+                                test_std[0].append(tim[0]+" "+tim[1]+" "+tim[2])
                             else:
                                 val_acc[0].append(tim[0])
                                 test_acc[0].append(tim[0])
+                                test_std[0].append(tim[0])
                         
                         line = fp.readline()
                         acc = [i.strip() for i in line.strip()[:-1].split("|")]
@@ -197,7 +217,10 @@ for sel in selection:
 
                         line = fp.readline()
                         acc = [i.strip() for i in line.strip()[:-1].split("|")]
-                        test_acc[delta+1].append(float(acc[-1]))                    
+                        test_acc[delta+1].append(float(acc[-1]))  
+                        line = fp.readline()
+                        acc = [i.strip() for i in line.strip()[:-1].split("|")]
+                        test_std[delta+1].append(float(acc[-1]))                  
 
                 line = fp.readline()
         
@@ -227,7 +250,15 @@ for sel in selection:
             line = ""
             for i in acc:
                 line = line + str(i)+"|" 
-            print(line,file=logfile)'''
+            print(line,file=logfile)
+
+        print("\nTest Std",file=logfile)
+        
+        for acc in test_std:
+            line = ""
+            for i in acc:
+                line = line + str(i)+"|" 
+            print(line,file=logfile)
 
         
 

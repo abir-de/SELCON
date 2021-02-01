@@ -662,17 +662,19 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
     if dset_name == "MSD":
         tst_file = os.path.join(datadir, 'YearPredictionMSD.t')
         x_tst, y_tst  = libsvm_file_load(tst_file,90)
-        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.003, random_state=42)
+        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.005, random_state=42)
     else:
         x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
         x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
 
+    print(min(y_trn),max(y_trn))
+
+    sc = StandardScaler()
+    x_trn = sc.fit_transform(x_trn)
+    x_val = sc.transform(x_val)
+    x_tst = sc.transform(x_tst)
+
     if dset_name not in ["census"]:
-    
-        sc = StandardScaler()
-        x_trn = sc.fit_transform(x_trn)
-        x_val = sc.transform(x_val)
-        x_tst = sc.transform(x_tst)
 
         sc_l = StandardScaler()
         y_trn = np.reshape(sc_l.fit_transform(np.reshape(y_trn,(-1,1))),(-1))

@@ -67,10 +67,20 @@ path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
 logfile = open(path_logfile, 'w')
 exp_name = data_name + '_fraction:' + str(fraction) + '_epochs:' + str(num_epochs) + \
            '_selEvery:' + str(select_every)
+
+path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
+modelfile = open(path_logfile, 'w')
+
 print(exp_name)
 exp_start_time = datetime.datetime.now()
 print("=======================================", file=logfile)
 print(exp_name, str(exp_start_time), file=logfile)
+
+print("=======================================", file=modelfile)
+print(exp_name, str(exp_start_time), file=modelfile)
+
+path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
+modelfile = open(path_logfile, 'w')
 
 fullset, data_dims = load_dataset_custom(datadir, data_name, True) # valset, testset,
 
@@ -247,30 +257,50 @@ def train_model(func_name,start_rand_idxs=None, bud=None):
     val_accuracy = torch.zeros(len(x_val_list))
     
     main_model.eval()
+    l = [torch.flatten(p) for p in main_model.parameters()]
+    flat = torch.cat(l)
+
+    print(func_name,len(idxs),file=modelfile)
+    print(flat,file=modelfile)
+
+    no_red_error = torch.nn.MSELoss(reduction='none')
+
     with torch.no_grad():
         '''full_trn_out = main_model(x_trn)
         full_trn_loss = criterion(full_trn_out, y_trn)
         sub_trn_out = main_model(x_trn[idxs])
         sub_trn_loss = criterion(sub_trn_out, y_trn[idxs])
-        print("Final SubsetTrn and FullTrn Loss:", sub_trn_loss.item(),full_trn_loss.item(),file=logfile)'''
+        print("Final SubsetTrn and FullTrn Loss:", full_trn_loss.item(), sub_trn_loss.item(),file=logfile)'''
+        
         
         for j in range(len(x_val_list)):
-
-            #print(val_classes[j],len(x_val_list[j]))
             
             val_out = main_model(x_val_list[j])
             val_loss = criterion(val_out, y_val_list[j])
             val_accuracy[j] = val_loss            
-        #print()
-        for j in range(len(x_tst_list)):
 
-            #print(tst_classes[j],len(x_tst_list[j]))
+        tst_loss =[]
+        for j in range(len(x_tst_list)):
             
             outputs = main_model(x_tst_list[j])
-            test_loss = criterion(outputs, y_tst_list[j])
-            tst_accuracy[j] = test_loss
+            temp = no_red_error(outputs, y_tst_list[j])
 
-    return [val_accuracy, val_classes, tst_accuracy, tst_classes]
+            tst_loss.append(temp)
+            print(list(temp.cpu().numpy()),file=modelfile)
+        
+        mean_loss = []
+        for j in range(len(tst_loss)):
+            for k in range(j+1,len(tst_loss)): 
+
+                for l in range(len(tst_loss[j])):
+                    for m in range(len(tst_loss[k])):
+                        mean_loss.append((tst_loss[j][l]-tst_loss[k][m])**2)
+
+        tst_accuracy = torch.mean(torch.tensor(mean_loss))
+
+
+    return [val_accuracy, val_classes, tst_accuracy]#, tst_classes]
+
 
 def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
@@ -393,8 +423,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             multiplier = torch.dot(alphas,torch.max(constraint,torch.zeros_like(constraint)))
 
-            loss = criterion(scores, targets_trn) +  reg_lambda*l2_reg*len(batch_idx) \
-                + torch.max(multiplier,0) #
+            loss = criterion(scores, targets_trn) + reg_lambda*l2_reg*len(batch_idx) \
+                + torch.max(multiplier,torch.zeros_like(multiplier)) #
             temp_loss += loss.item()
             loss.backward()
 
@@ -558,10 +588,19 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
     tst_accuracy = torch.zeros(len(x_tst_list))
     val_accuracy = torch.zeros(len(x_val_list))
+
+    no_red_error = torch.nn.MSELoss(reduction='none')
     
     #print(constraint)
     #print(alphas)
     main_model.eval()
+
+    l = [torch.flatten(p) for p in main_model.parameters()]
+    flat = torch.cat(l)
+
+    print(func_name,len(sub_idxs),file=modelfile)
+    print(flat,file=modelfile)
+
     with torch.no_grad():
         '''full_trn_out = main_model(x_trn)
         full_trn_loss = criterion(full_trn_out, y_trn)
@@ -569,19 +608,34 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         sub_trn_loss = criterion(sub_trn_out, y_trn[idxs])
         print("Final SubsetTrn and FullTrn Loss:", full_trn_loss.item(), sub_trn_loss.item(),file=logfile)'''
         
+        
         for j in range(len(x_val_list)):
             
             val_out = main_model(x_val_list[j])
             val_loss = criterion(val_out, y_val_list[j])
             val_accuracy[j] = val_loss            
 
+        tst_loss =[]
         for j in range(len(x_tst_list)):
             
             outputs = main_model(x_tst_list[j])
-            test_loss = criterion(outputs, y_tst_list[j])
-            tst_accuracy[j] = test_loss
+            temp = no_red_error(outputs, y_tst_list[j])
 
-    return [val_accuracy, val_classes, tst_accuracy, tst_classes]
+            tst_loss.append(temp)
+            print(list(temp.cpu().numpy()),file=modelfile)
+        
+        mean_loss = []
+        for j in range(len(tst_loss)):
+            for k in range(j+1,len(tst_loss)): 
+
+                for l in range(len(tst_loss[j])):
+                    for m in range(len(tst_loss[k])):
+                        mean_loss.append((tst_loss[j][l]-tst_loss[k][m])**2)
+
+        tst_accuracy = torch.mean(torch.tensor(mean_loss))
+
+
+    return [val_accuracy, val_classes, tst_accuracy]#, tst_classes]
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
@@ -612,8 +666,14 @@ rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-methods = [rand_fair,sub_fair,full_fair,full,rand] #
-methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Full","Random"]
+deltas = torch.ones_like(deltas)
+starting = time.process_time() 
+sub = train_model_fair('Fair_subset', rand_idxs,bud)
+ending = time.process_time() 
+print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
+
+methods = [rand_fair,sub_fair,full_fair,full,rand,sub] #
+methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Full","Random","Subset"]
 
 
 for me in range(len(methods)):
@@ -630,12 +690,14 @@ for me in range(len(methods)):
     print('---------------------------------------------------------------------',file=logfile)
 
     print("\n", file=logfile)
-    print("Test Error",file=logfile)
+    #print("Test Error",file=logfile)
     print('---------------------------------------------------------------------',file=logfile)
 
-    print('|Class | Error|',file=logfile)
+    #print('|Class | Error|',file=logfile)
 
-    for a in range(len(x_tst_list)):
-        print("|",methods[me][3][a],"|",methods[me][2][a].item(),"|",file=logfile)
+    '''for a in range(len(x_tst_list)):
+        print("|",methods[me][3][a],"|",methods[me][2][a].item(),"|",file=logfile)'''
+
+    print("Test Error","|",methods[me][2].item(),"|",file=logfile)
 
     print('---------------------------------------------------------------------',file=logfile)

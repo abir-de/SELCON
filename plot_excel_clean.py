@@ -56,45 +56,9 @@ sel = 0
 x_axis =[]
 
 good_labels = ["Random with Constraints","SELCON","Random","CRAIG",\
-    "GLISTER","SELCON without Constraints","Full with Constraints","Full"]#,\"Facility with Constraints"]
+    "GLISTER","SELCON without Constraints","Full with Constraints","Full"]
 
 good_labels = [r'\textbf{'+i+'}' for i in good_labels] 
-
-#fig = pylab.figure()
-#figlegend = pylab.figure(figsize=(16,1))
-#ax = fig.add_subplot(111)
-
-
-Triage_Alg = mlines.Line2D([], [], color=color_list[0], marker='o',linewidth=4,
-                               markersize=14, label=good_labels[0])
-Triage_Est = mlines.Line2D([], [], color=color_list[1], marker='o', linewidth=4,
-                               markersize=14, label=good_labels[1])
-SDG = mlines.Line2D([], [], color=color_list[2], marker='o', linewidth=4,
-                               markersize=14, label=good_labels[2])
-DG = mlines.Line2D([], [], color=color_list[3], marker='o', linewidth=4,
-                               markersize=14, label=good_labels[3])
-FA = mlines.Line2D([], [], color=color_list[4], linestyle='dashed',linewidth=6,
-                               markersize=14, label=good_labels[4])
-NA = mlines.Line2D([], [], color=color_list[5], linestyle='dashed',linewidth=6,
-                               markersize=14, label=good_labels[5])
-
-
-#ax.legend(ncol=8, mode="expand", borderaxespad=0.,prop={'size': 25,'weight':200},
-#                    frameon=False,handles=[DG,SDG,Triage_Alg,Triage_Est,FA,NA],
-#                                handlelength=0.7,fontsize=70,handletextpad=0.3,columnspacing=3.0)
-#print(x_axis)
-
-#file_no =1
-
-'''fig = pylab.figure()
-figlegend = pylab.figure(figsize=(20,1))
-
-figlegend.legend(ncol=4, mode="expand", borderaxespad=0.,prop={'size': 25,'weight':200},
-                 frameon=False,handles=[DG,SDG,Triage_Alg,Triage_Est,FA,NA],
-                               handlelength=0.7,fontsize=70,handletextpad=0.3,columnspacing=3.0)
-
-file = "results/Images/Acc_vs_S/legend.pdf"#".pdf"
-plt.savefig(file, bbox_inches='tight')'''
 
 
 files = ['results/Faster/NY_Stock_exchange_close_100_full/combined_NY_Stock_exchange_close_1.0_all_frac.xlsx',\
@@ -127,20 +91,8 @@ for file in files:
     time[:,0] = time[:,0]*100
     acc[:,0] = acc[:,0]*100
 
-    #time = np.array(whole_sheet[4:9],dtype=np.float32)
-    #acc = np.array(whole_sheet[-5:],dtype=np.float32)
-
-    #print(time)
-    #print(acc)
-
-    #ax = fig.add_subplot(1,len(files),file_no)
-
     fig, ax = plt.subplots()
-    #ax = fig.add_subplot(2,len(files),len(files)+file_no)
     clr =0
-
-    #time_unit = 60 #3600
-    #time_unit_str = "min." #'hrs.'
 
     for i in range(1,time.shape[1]-2):#):
         #if i == 4:
@@ -167,10 +119,6 @@ for file in files:
     plt.rcParams["axes.labelweight"] = "bold"
     #ax.legend(prop={'size': 18}, frameon=False,handlelength=0.4,loc='center left',\
     #     bbox_to_anchor=(-0.65, 0.5))
-
-    #ax.legend(ncol=5, mode="expand", borderaxespad=0.,prop={'size': 25,'weight':200},
-    #             frameon=False,handles=[DG,SDG,Triage_Alg,Triage_Est,FA,NA],
-    #                           handlelength=0.7,fontsize=70,handletextpad=0.3,columnspacing=3.0)
 
     plt.box(on=True)
     plt.grid(axis='y',linestyle='-', linewidth=1)
@@ -277,6 +225,8 @@ for i in range(1,time.shape[1]):
 
 #plt.box(on=False)
 
+##LEGEND GENERATOR
+
 my_handles, labels = ax.get_legend_handles_labels()
 #figlegend.legend(handles, labels, loc='upper center')
 
@@ -289,79 +239,3 @@ file = "results/Images/Acc_vs_S/legend.png"#".pdf"
 plt.savefig(file, bbox_inches='tight')
 
 #handles, labels = ax.get_legend_handles_labels()
-
-
-'''files = ['results/Faster/cadata/combined_cadata_0.3_pickle.xlsx',\
-    'results/Faster/LawSchool/combined_LawSchool_0.04_pickle.xlsx',
-    'results/Faster/MSD/combined_MSD_0.7_pickle.xlsx',\
-    'results/Faster/NY_Stock_exchange_close_100_full/combined_NY_Stock_exchange_close_1.0_pickel.xlsx',\
-    'results/Faster/NY_Stock_exchange_high_100/combined_NY_Stock_exchange_high_1.0_pickle.xlsx']
-
-pi_data_name = ['cadata','LawSchool','MSD','NY_Stock_exchange_close',\
-    'NY_Stock_exchange_high']
-
-main_keys =['mean_error','std_dev','time','S']
-
-pi_results = {}
-
-good_labels = ["Random with Constraints","SELCON","Random","CRAIG",\
-    "GLISTER","SELCON without Constraints","Full with Constraints","Full"]
-
-result_dir = "results/Pickle/"
-
-file_no = 0
-
-for file in files:
-
-    #data_name = file.split('/')[-1].split('.')[0]
-    
-    data_de ={key: {} for key in main_keys}
-    acc =[]
-    wb = xlrd.open_workbook(file)
-    sheet = wb.sheet_by_index(0) 
-
-    curr_row = 0
-    while curr_row < (sheet.nrows - 1):
-        curr_row += 1
-        row = sheet.row(curr_row)
-        acc.append(row) 
-    
-    whole_sheet = [[ele.value for ele in each] for each in acc]
-    #print(acc)
-
-    #print(whole_sheet[4:9])
-    time = np.array(whole_sheet[4:9],dtype=np.float32)
-    #print(whole_sheet[20:25])
-    acc = np.array(whole_sheet[20:25],dtype=np.float32)
-    std = np.array(whole_sheet[-5:],dtype=np.float32)
-
-    time[:,0] = time[:,0]*100
-    acc[:,0] = acc[:,0]*100
-    std[:,0] = std[:,0]*100
-
-    data_de[main_keys[-1]] = time[:,0]
-
-    for i in range(len(good_labels)):
-        data_de[main_keys[2]][good_labels[i]] = time[:,i+1] 
-        data_de[main_keys[0]][good_labels[i]] = acc[:,i+1] 
-        data_de[main_keys[1]][good_labels[i]] = std[:,i+1] 
-
-    #pi_results[pi_data_name[file_no]] = data_de
-
-    with open(result_dir+pi_data_name[file_no]+'.pkl', 'wb') as output:  
-        pickle.dump(data_de, output, pickle.HIGHEST_PROTOCOL)
-
-    file_no+=1'''
-
-##CHECK
-
-'''with (open('results/Pickle/NY_Stock_exchange_close.pkl', "rb")) as openfile:
-    while True:
-        try:
-            print(pickle.load(openfile))
-        except EOFError:
-            break'''
-
-
-
-    
