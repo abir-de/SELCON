@@ -10,14 +10,13 @@ import torch.nn as nn
 import torch.optim as optim
 
 from sklearn.model_selection import train_test_split
-from utils.custom_dataset import load_std_regress_data,CustomDataset,load_dataset_custom
+from utils.custom_dataset import CustomDataset#load_std_regress_data,CustomDataset,load_dataset_custom
 from utils.Create_Slices import get_slices
-#from model.LinearRegression import RegressionNet, LogisticNet
-from model.TwoLayer import TwoLayerNet
+from model.LinearRegression import RegressionNet, LogisticNet
 #from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
-from model.Fair_Subset_Deep import FindSubset_Vect_Deep_rePre as FindSubset_Vect,FindSubset_Vect_TrnLoss_Deep
-#from facility_location import run_stochastic_Facloc
-from model.CRAIG import CRAIGStrategy 
+from model.Fair_Subset_no_grad import FindSubset_Vect_No_ValLoss as FindSubset_Vect,FindSubset_Vect_TrnLoss
+from facility_location import run_stochastic_Facloc
+
 from model.glister import Glister_Linear_SetFunction_RModular_Regression as GLISTER
 
 from torch.utils.data import DataLoader
@@ -51,20 +50,19 @@ sub_epoch = 3 #5
 batch_size = 4000#1000
 
 learning_rate = 0.01 #0.05 
-hidden_units = 5
 #change = [250,650,1250,1950,4000]#,4200]
 
 #def read_facility_location:
 #    f = open('results/FacLoc/'+data_name+"/"+data_name+".txt")
 
 if is_time:
-    fullset, valset, testset = load_time_series_data (datadir, data_name, past_length) #, sc_trans
+    fullset, valset, testset = load_time_series_data (datadir, data_name, past_length,clean=False) #, sc_trans
 
     x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
     x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
     x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
 
-elif data_name in ['Community_Crime','census','LawSchool']:
+'''elif data_name in ['Community_Crime','census','LawSchool']:
 
 
     fullset, data_dims = load_dataset_custom(datadir, data_name, True)
@@ -102,7 +100,7 @@ else:
 
     x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
     x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
-    x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
+    x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()'''
 
 '''x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
      torch.from_numpy(fullset[1]).float().to(device)
@@ -114,13 +112,13 @@ x_val, y_val = torch.from_numpy(valset[0]).float().to(device),\
 print("Test len",len(y_tst))
 
 if data_name == "synthetic":
-    all_logs_dir = './results/Deep/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
+    all_logs_dir = './results/Noise/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 elif is_time:
-    all_logs_dir = './results/Deep/' + data_name +"_"+str(past_length)+'_CRAIG/' + str(fraction) +\
+    all_logs_dir = './results/Noise/' + data_name +"_"+str(past_length)+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 else:
-    all_logs_dir = './results/Deep/' + data_name+'/' + str(fraction) +\
+    all_logs_dir = './results/Noise/' + data_name+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 print(all_logs_dir)
 subprocess.run(["mkdir", "-p", all_logs_dir])
@@ -143,47 +141,6 @@ print(exp_name, str(exp_start_time), file=modelfile)
 
 path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
 modelfile = open(path_logfile, 'w')
-
-#fullset, data_dims = load_dataset_custom(datadir, data_name, True) # valset, testset,
-
-'''if data_name == 'Community_Crime':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device,3)
-
-    change = [20,40,80,160]
-
-elif data_name == 'census':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device)
-    
-    #x_val_list, y_val_list = x_val_list[:-1], y_val_list[:-1]
-    #x_tst_list, y_tst_list = x_tst_list[:-1], y_tst_list[:-1]
-    #val_classes, tst_classes = val_classes[:-1], tst_classes[:-1]
-
-    rescale = np.linalg.norm(x_trn)
-    x_trn = x_trn/rescale
-
-    for j in range(len(x_val_list)):
-        x_val_list[j] = x_val_list[j]/rescale
-        x_tst_list[j] = x_tst_list[j]/rescale
-
-    num_cls = 2
-
-    change = [500]#[50,75,100,550] #[100,150,160,170,200]
-
-elif data_name == 'OnlineNewsPopularity':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device)
-
-    change = [100] #[100,150,160,170,200]
-
-elif data_name == 'LawSchool':
-    change = [100] #[100,150,160,170,200]
-
-elif data_name == 'German_credit':
-    change = [150,450,500] #[100,150,160,170,200]'''
-
-#change = [50,100,200,550]
 
 N_val, M_val = x_val.shape
 print("Validation set Acccuracy",N_val,M_val)
@@ -213,9 +170,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     '''if data_name == "census":
         main_model = LogisticNet(M)
     else:'''
-    #main_model = RegressionNet(M)
-
-    main_model = TwoLayerNet(M,hidden_units)
+    main_model = RegressionNet(M)
     main_model.apply(weight_reset)
 
     #for p in main_model.parameters():
@@ -253,25 +208,6 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
         glister = GLISTER(loader_full_tr, loader_val, main_model,learning_rate, device,'RGreedy',r=1)
         print("Starting glister of size ",fraction)
 
-    elif func_name == "CRAIG":
-
-        #bins = np.linspace(torch.min(y_trn).cpu().numpy(), torch.max(y_trn).cpu().numpy(), 16)
-        #y_trn_bin = torch.tensor(np.digitize(y_trn.cpu().numpy(), bins)-1,device=device)
-
-        y_trn_bin = torch.arange(20).repeat_interleave(int(y_trn.shape[0]/19))
-
-        print(len(y_trn_bin))
-
-        sorted_y, indices = torch.sort(y_trn)
-                
-        loader_full_tr_sort = DataLoader(CustomDataset(x_trn[indices], sorted_y,transform=None),\
-            shuffle=False,batch_size=batch_size)
-
-        craig = CRAIGStrategy(loader_full_tr_sort, loader_val,y_trn_bin[:y_trn.shape[0]], main_model,\
-             device, 20, True,False, 'PerClass')
-        
-        print("Starting CRAIG of size ",fraction)
-
     elif func_name == 'Fair_subset':
 
         cached_state_dict = copy.deepcopy(main_model.state_dict())
@@ -288,7 +224,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
             current_idxs = [s for s in range(len(idxs))]
 
-        fsubset_d = FindSubset_Vect_TrnLoss_Deep(x_trn[sub_rand_idxs], y_trn[sub_rand_idxs], x_val, y_val,main_model,\
+        fsubset_d = FindSubset_Vect_TrnLoss(x_trn[sub_rand_idxs], y_trn[sub_rand_idxs], x_val, y_val,main_model,\
             criterion,device,deltas,learning_rate,reg_lambda,batch_size)
 
         fsubset_d.precompute(int(num_epochs/4),sub_epoch,torch.randn_like(deltas,device=device))
@@ -303,8 +239,6 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
     i =0
     mul=1
     lr_count = 0
-
-    gamma = torch.ones(len(idxs),device=device)
     #while(True):
     for i in range(num_epochs):#curr_epoch):#num_epochs):
         
@@ -329,10 +263,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             flat = torch.cat(l)
             l2_reg = torch.sum(flat*flat)'''
             
-            if func_name == "CRAIG":
-                loss = criterion(gamma[batch_idx]*scores, targets) +  reg_lambda*l2_reg*len(batch_idx)
-            else:
-                loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(batch_idx)
+            loss = criterion(scores, targets) +  reg_lambda*l2_reg*len(batch_idx)
             temp_loss += loss.item()
             loss.backward()
 
@@ -354,22 +285,23 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
             if func_name == 'Fair_subset':
 
-                fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-6)
+                fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul#,1e-4)
 
-                '''state_values = list(main_optimizer.state.values())
+                state_values = list(main_optimizer.state.values())
                 step = state_values[0]['step']
 
-                w_exp_avg = torch.cat((state_values[2]['exp_avg'].view(-1),state_values[3]['exp_avg']))
-                w_exp_avg_sq = torch.cat((state_values[2]['exp_avg_sq'].view(-1),state_values[3]['exp_avg_sq']))'''
+                w_exp_avg = torch.cat((state_values[0]['exp_avg'].view(-1),state_values[1]['exp_avg']))
+                #torch.zeros(x_trn.shape[1]+1,device=device)
+                w_exp_avg_sq = torch.cat((state_values[0]['exp_avg_sq'].view(-1),state_values[1]['exp_avg_sq']))
+                #torch.zeros(x_trn.shape[1]+1,device=device)
 
-                step = 0
-                w_exp_avg = torch.zeros(hidden_units+1,device=device)
-                w_exp_avg_sq = torch.zeros(hidden_units+1,device=device)
+                #a_exp_avg = torch.zeros(1,device=device)
+                #a_exp_avg_sq = torch.zeros(1,device=device)
 
                 #print(exp_avg,exp_avg_sq)
 
                 d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,current_idxs,\
-                    bud,batch_size,step,w_exp_avg,w_exp_avg_sq)
+                    bud,train_batch_size,step,w_exp_avg,w_exp_avg_sq)
                 #torch.ones_like(deltas,device=device),a_exp_avg,a_exp_avg_sq)#,main_optimizer,dual_optimizer)
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
@@ -387,12 +319,6 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
             elif func_name == 'Glister':
 
                 d_sub_idxs = glister.select(bud,clone_dict,N)
-
-            elif func_name == "CRAIG":
-
-                d_sub_idxs,gamma = craig.select(bud, clone_dict, 'stochastic')
-
-                gamma = torch.tensor(gamma,device=device)
 
             new_ele = set(d_sub_idxs).difference(set(idxs))
             print(len(new_ele),0.1*bud)
@@ -527,10 +453,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
     '''if data_name == "census":
         main_model = LogisticNet(M)
     else:'''
-    
-    
-    #main_model = RegressionNet(M)
-    main_model = TwoLayerNet(M,hidden_units)
+    main_model = RegressionNet(M)
     main_model.apply(weight_reset)
 
     #for p in main_model.parameters():
@@ -753,31 +676,27 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             if func_name == 'Fair_subset':
 
-                fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul
+                fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul#,1e-4)
 
                 state_values = list(main_optimizer.state.values())
-                step = state_values[0]['step'] #0
+                step = 0#state_values[0]['step']
 
-                w_exp_avg = torch.cat((state_values[2]['exp_avg'].view(-1),state_values[3]['exp_avg']))
-                w_exp_avg_sq = torch.cat((state_values[2]['exp_avg_sq'].view(-1),state_values[3]['exp_avg_sq']))
-                
+                w_exp_avg = torch.zeros(x_trn.shape[1]+1,device=device)
+                #torch.cat((state_values[0]['exp_avg'].view(-1),state_values[1]['exp_avg']))
+                w_exp_avg_sq = torch.zeros(x_trn.shape[1]+1,device=device)
+                #torch.cat((state_values[0]['exp_avg_sq'].view(-1),state_values[1]['exp_avg_sq']))
+
                 state_values = list(dual_optimizer.state.values())
                 
-                a_exp_avg = state_values[0]['exp_avg'] 
-                a_exp_avg_sq = state_values[0]['exp_avg_sq']
-                
-                '''fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-3)
-
-                step = 0
-                w_exp_avg = torch.zeros(hidden_units+1,device=device)
-                w_exp_avg_sq = torch.zeros(hidden_units+1,device=device)
                 a_exp_avg = torch.zeros(1,device=device)
-                a_exp_avg_sq = torch.zeros(1,device=device)'''
+                #state_values[0]['exp_avg']
+                a_exp_avg_sq = torch.zeros(1,device=device)
+                #state_values[0]['exp_avg_sq']
 
                 #print(exp_avg,exp_avg_sq)
 
                 d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,current_idxs,alpha_orig,bud,\
-                    batch_size,step,w_exp_avg,w_exp_avg_sq,a_exp_avg,a_exp_avg_sq)#,main_optimizer,dual_optimizer)
+                    train_batch_size,step,w_exp_avg,w_exp_avg_sq,a_exp_avg,a_exp_avg_sq)#,main_optimizer,dual_optimizer)
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
                 alpha_orig = copy.deepcopy(alphas)
@@ -795,7 +714,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
                 if len(new_ele) > 0.1*bud:
                     main_optimizer = torch.optim.Adam([
-                    {'params': main_model.parameters()}], lr=main_optimizer.param_groups[0]['lr']*mul)
+                    {'params': main_model.parameters()}], lr=main_optimizer.param_groups[0]['lr'])
                     #max(main_optimizer.param_groups[0]['lr'],0.001))
                     
                     dual_optimizer = torch.optim.Adam([{'params': alphas}], lr=learning_rate)
@@ -933,7 +852,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
 print("Random with Constraints training time ",ending-starting, file=logfile)
@@ -943,57 +862,58 @@ sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 sub = train_model('Fair_subset', rand_idxs,bud=bud)
 ending = time.process_time() 
-print("Subset of size ",fraction,"training time ",ending-starting, file=logfile)'''
+print("Subset of size ",fraction,"training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 #full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
-#print("Full with Constraints training time ",ending-starting, file=logfile)
+#print("Full with Constraints training time ",ending-starting, file=logfile)'''
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
-starting = time.process_time() 
+"""starting = time.process_time() 
 #full = train_model('Random', [i for i in range(N)],2000)
 ending = time.process_time() 
-#print("Full training time ",ending-starting, file=logfile)
+#print("Full training time ",ending-starting, file=logfile)"""
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 rand = train_model('Random',rand_idxs,2000)
 ending = time.process_time() 
-print("Random training time ",ending-starting, file=logfile)'''
+print("Random training time ",ending-starting, file=logfile)
 
 #methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
 #methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
 #["Full"]#
 
+"""starting = time.process_time() 
+index =run_stochastic_Facloc(x_trn, y_trn, min(50000,len(y_trn)), bud,None,device=device)
+ending = time.process_time() 
+
+fac_loc_time = ending-starting
+
+'''starting = time.process_time() 
+facloc_fair = train_model_fair('Random', index)
+ending = time.process_time() 
+print("Facility location with Constraints training time ",ending-starting+fac_loc_time, file=logfile)'''
+
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
 starting = time.process_time() 
-facloc = train_model('CRAIG', rand_idxs,2000,bud=bud)
+facloc = train_model('Random', index,2000)
 ending = time.process_time() 
-print("CRAIG time ",ending-starting, file=logfile)
+print("Facility location time ",ending-starting+fac_loc_time, file=logfile)
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
-print("Glister time ",ending-starting, file=logfile)'''
+print("Glister time ",ending-starting, file=logfile)"""
 
-'''deltas = torch.ones_like(deltas)*10
-starting = time.process_time() 
-sub_con = train_model_fair('Fair_subset', rand_idxs,bud)
-ending = time.process_time() 
-print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)'''
-
-
-#methods = [rand_fair,sub_fair,sub,rand,sub_con]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
-#methods_names= ["Random with Constraints","Subset with Constraits","Subset","Random",\
-#    "Subset without Constraits"]
-
-methods = [facloc]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
-methods_names= ["CRAIG"]
+methods = [rand_fair,sub_fair,rand]
+#[rand_fair,sub_fair]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
+methods_names= ["Random with Constraints","Subset with Constraits","Random"]
 #["Random with Constraints","Subset with Constraints"]#,"Full with Constraints"]
 #,"Random","Facility","Glister"] #"Facility with Constraints"
 

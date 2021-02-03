@@ -40,7 +40,7 @@ for dset in datasets:
                     else:
                         args.append('0')
                     args.append(str(psuedo_length))
-                    args.append('0')
+                    if if_time:
                         args.append(str(past_length))
                     print(args)
                     subprocess.run(args)

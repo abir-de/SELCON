@@ -28,6 +28,7 @@ for sel in selection:
 
     val_acc = [[] for _ in range(len(in_dir)+1)]
     test_acc = [[] for _ in range(len(in_dir)+1)]
+    test_std = [[] for _ in range(len(in_dir)+1)]
     time =[[] for _ in range(len(in_dir)+1)]
 
     first = True
@@ -35,6 +36,7 @@ for sel in selection:
     time[0].append(" ")
     val_acc[0].append(" ")
     test_acc[0].append(" ")
+    test_std[0].append(" ")
 
     for delta in range(len(in_dir)): #1,
 
@@ -49,6 +51,7 @@ for sel in selection:
             time[delta+1].append(float(in_dir[delta]))
             val_acc[delta+1].append(float(in_dir[delta]))
             test_acc[delta+1].append(float(in_dir[delta]))
+            test_std[delta+1].append(float(in_dir[delta]))
 
             line = fp.readline()
 
@@ -72,9 +75,11 @@ for sel in selection:
                             if len(tim) == 3:
                                 val_acc[0].append(tim[0]+" "+tim[1]+" "+tim[2])
                                 test_acc[0].append(tim[0]+" "+tim[1]+" "+tim[2])
+                                test_std[0].append(tim[0]+" "+tim[1]+" "+tim[2])
                             else:
                                 val_acc[0].append(tim[0])
                                 test_acc[0].append(tim[0])
+                                test_std[0].append(tim[0])
 
                         for _ in range(3):
                             line = fp.readline()
@@ -99,11 +104,16 @@ for sel in selection:
                         #print(max(acc_list),min(acc_list),in_dir[delta])    
                         test_acc[delta+1].append(sum(acc_list))#max(acc_list)-min(acc_list)) #'''
 
-                        acc_list =[]
                         line = fp.readline()
                         #print(line)
                         acc = [i.strip() for i in line.strip()[:-1].split("|")]  
                         test_acc[delta+1].append(float(acc[-1]))
+
+                        line = fp.readline()
+                        #print(line)
+                        std = [i.strip() for i in line.strip()[:-1].split("|")]  
+                        test_std[delta+1].append(float(acc[-1]))
+
 
                 line = fp.readline()
         
@@ -133,6 +143,14 @@ for sel in selection:
         print("\nTest Accuracies",file=logfile)
         
         for acc in test_acc:
+            line = ""
+            for i in acc:
+                line = line + str(i)+"|" 
+            print(line,file=logfile)
+
+        print("\nTest Std",file=logfile)
+        
+        for acc in test_std:
             line = ""
             for i in acc:
                 line = line + str(i)+"|" 

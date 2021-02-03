@@ -3,7 +3,7 @@ import os
 import sys
 import copy
 
-"""data_name = sys.argv[2]
+data_name = sys.argv[2]
 directory = sys.argv[1]
 frac= sys.argv[3]
 
@@ -135,9 +135,9 @@ for sel in selection:
             line = ""
             for i in acc:
                 line = line + str(i)+"|" 
-            print(line,file=logfile)"""
+            print(line,file=logfile)
 
-data_name = sys.argv[2]
+"""data_name = sys.argv[2]
 directory = sys.argv[1]
 frac= sys.argv[3]
 
@@ -258,7 +258,7 @@ for sel in selection:
             line = ""
             for i in acc:
                 line = line + str(i)+"|" 
-            print(line,file=logfile)
+            print(line,file=logfile)"""
 
         
 

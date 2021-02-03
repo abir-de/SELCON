@@ -34,20 +34,32 @@ def latexify():
 latexify()
 
 
-color_list = [(0, 0, 1),(1, 0, 0), (0,0,0),'purple','darkorange']
+color_list = [(0, 0, 1),(1, 0, 0), (0,0,0),'purple','forestgreen','darkorange']
 
-good_labels = ["Random with Constraints",'SELCON','Full with Contraints','Full',\
+good_labels = ["Random with Constraints",'SELCON','Full with Contraints','Full','Random',\
     'SELCON without Constraints']#,\"Facility with Constraints"]
+
+good_labels_pi = ["Random with Constraints",'SELCON','Full with Contraints','Random',\
+    'SELCON without Constraints']
 good_labels = [r'\textbf{'+i+'}' for i in good_labels] 
 
+pi_data_name = ['Comm_Crime','LawSchool']
+
+main_keys =['mean_error','std_dev','Delta']
+
+pi_results = {}
+
+result_dir = "results/Pickle/"
 
 files = ['results/Slice/Community_Crime/0.1/combined_Community_Crime_0.1.txt',\
     'results/Slice/LawSchool/0.1/combined_LawSchool_0.1.txt']
 
-
+file_no = 0
 for file in files:
 
     data_name = file.split('/')[-1].split('.')[0]
+    
+    data_de ={key: {} for key in main_keys}
     
     acc =[]
     wb = open(file)
@@ -58,17 +70,37 @@ for file in files:
         whole_sheet.append(line.split('|'))
         line = wb.readline()
 
-    for t in range(10,0,-1):
+    for t in range(23,0,-1):
         #print(whole_sheet[-t])
+        if t in [i for i in range(11,14)]:
+            continue
         whole_sheet[-t] = [float(i) for i in whole_sheet[-t][:-1]]
     
-    acc = np.array(whole_sheet[-10:],dtype=np.float32)
+    acc = np.array(whole_sheet[-23:-13],dtype=np.float32)
+
+    std = np.array(whole_sheet[-10:],dtype=np.float32)
+
+    data_de[main_keys[-1]] = acc[:,0]
+
+    print(acc.shape)
+
+    select = [1,2,3,5,acc.shape[1]-1]
+
+    for i in range(len(good_labels_pi)):
+
+        data_de[main_keys[0]][good_labels_pi[i]] = acc[:,select[i]] 
+        data_de[main_keys[1]][good_labels_pi[i]] = std[:,select[i]] 
+
+    with open(result_dir+pi_data_name[file_no]+'_fair.pkl', 'wb') as output:  
+        pickle.dump(data_de, output, pickle.HIGHEST_PROTOCOL)
+    
+    file_no+=1
 
     fig, ax = plt.subplots()
     #ax = fig.add_subplot(2,len(files),len(files)+file_no)
     clr =0
 
-    select = [1,2,3,4,acc.shape[1]-1]
+    select = [1,2,3,4,5,acc.shape[1]-1]
 
     for i in select:#):
        

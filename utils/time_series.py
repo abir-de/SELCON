@@ -60,7 +60,7 @@ def process_time_series(datadir, past_length,col_name,name,save_data=True):
     return finaL_x_trn, finaL_y_trn
 
 
-def load_time_series_data (datadir, dset_name,past_length):
+def load_time_series_data (datadir, dset_name,past_length,clean=True):
 
     if os.path.isfile(os.path.join(datadir, dset_name+'_'+str(past_length)+'.data.npy')) and \
             os.path.isfile(os.path.join(datadir, dset_name+'_'+str(past_length)+'.label.npy')):
@@ -82,6 +82,14 @@ def load_time_series_data (datadir, dset_name,past_length):
         elif dset_name == "NY_Stock_exchange_low":
             x_trn, y_trn  = process_time_series(datadir,past_length,'low',dset_name)
 
+    if not clean:
+
+        noise_size = int(len(y_trn) * 0.5)
+        noise_indices = np.random.choice(np.arange(len(y_trn)), size=noise_size, replace=False)
+        
+        sigma = 40
+        y_trn[noise_indices] = y_trn[noise_indices] + np.random.normal(0, sigma, noise_size)
+    
     x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
     x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.002, random_state=42)
     

@@ -132,6 +132,11 @@ for ndir in directories:
 
         #ax = fig.add_subplot(1,len(files),file_no)
 
+    if data_name == 'cadata':
+        print("hi")
+        final_acc[:,1:] = final_acc[:,1:]/(2.5341*2.5341)
+        final_std[:,1:] = final_std[:,1:]/(2.5341*2.5341)    
+    
     data_de[main_keys[-1]] = final_acc[:,0]
 
     #print(final_acc.shape)
