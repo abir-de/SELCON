@@ -32,7 +32,10 @@ for dset in datasets:
                 for delt in deltas:
                     args = ['python3']
                     args.append('Subset_Noise.py')
-                    args.append(datadir)
+                    if if_time:
+                        args.append(datadir+dset)
+                    else:
+                        args.append(datadir)
                     args.append(dset)
                     args.append(str(f))
                     args.append(str(num_epochs))
