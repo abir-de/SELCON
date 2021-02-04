@@ -97,173 +97,145 @@ file = "results/Images/Acc_vs_S/legend.pdf"#".pdf"
 plt.savefig(file, bbox_inches='tight')'''
 
 
-files = ['results/Faster/NY_Stock_exchange_close_100_full/combined_NY_Stock_exchange_close_1.0_all_frac.xlsx',\
-        'results/Faster/NY_Stock_exchange_high_100/combined_NY_Stock_exchange_high_1.0_all_frac.xlsx',\
-            'results/Faster/MSD/combined_MSD_0.7_all_frac.xlsx',\
-                'results/Faster/cadata/combined_cadata_0.3_all_frac.xlsx',\
-                    'results/Faster/LawSchool/combined_LawSchool_0.04_all_frac.xlsx']
+# files = ['results/Faster/NY_Stock_exchange_close_100_full/combined_NY_Stock_exchange_close_1.0_all_frac.xlsx',\
+#         'results/Faster/NY_Stock_exchange_high_100/combined_NY_Stock_exchange_high_1.0_all_frac.xlsx',\
+#             'results/Faster/MSD/combined_MSD_0.7_all_frac.xlsx',\
+#                 'results/Faster/cadata/combined_cadata_0.3_all_frac.xlsx',\
+#                     'results/Faster/LawSchool/combined_LawSchool_0.04_all_frac.xlsx']
 
 
-for file in files:
+# for file in files:
 
-    data_name = file.split('/')[-1].split('.')[0]
+#     data_name = file.split('/')[-1].split('.')[0]
     
-    acc =[]
-    wb = xlrd.open_workbook(file)
-    sheet = wb.sheet_by_index(0) 
+#     acc =[]
+#     wb = xlrd.open_workbook(file)
+#     sheet = wb.sheet_by_index(0) 
 
-    curr_row = 0
-    while curr_row < (sheet.nrows - 1):
-        curr_row += 1
-        row = sheet.row(curr_row)
-        acc.append(row) 
+#     curr_row = 0
+#     while curr_row < (sheet.nrows - 1):
+#         curr_row += 1
+#         row = sheet.row(curr_row)
+#         acc.append(row) 
     
-    whole_sheet = [[ele.value for ele in each] for each in acc]
-    #print(acc)
+#     whole_sheet = [[ele.value for ele in each] for each in acc]
+#     #print(acc)
 
-    time = np.array(whole_sheet[4:9],dtype=np.float32)
-    acc = np.array(whole_sheet[-5:],dtype=np.float32)
+#     time = np.array(whole_sheet[4:9],dtype=np.float32)
+#     acc = np.array(whole_sheet[-5:],dtype=np.float32)
 
-    time[:,0] = time[:,0]*100
-    acc[:,0] = acc[:,0]*100
+#     time[:,0] = time[:,0]*100
+#     acc[:,0] = acc[:,0]*100
 
-    #time = np.array(whole_sheet[4:9],dtype=np.float32)
-    #acc = np.array(whole_sheet[-5:],dtype=np.float32)
+#     #time = np.array(whole_sheet[4:9],dtype=np.float32)
+#     #acc = np.array(whole_sheet[-5:],dtype=np.float32)
 
-    #print(time)
-    #print(acc)
+#     #print(time)
+#     #print(acc)
 
-    #ax = fig.add_subplot(1,len(files),file_no)
+#     #ax = fig.add_subplot(1,len(files),file_no)
 
-    fig, ax = plt.subplots()
-    #ax = fig.add_subplot(2,len(files),len(files)+file_no)
-    clr =0
+#     fig, ax = plt.subplots()
+#     #ax = fig.add_subplot(2,len(files),len(files)+file_no)
+#     clr =0
 
-    #time_unit = 60 #3600
-    #time_unit_str = "min." #'hrs.'
+#     #time_unit = 60 #3600
+#     #time_unit_str = "min." #'hrs.'
 
-    for i in range(1,time.shape[1]-2):#):
-        #if i == 4:
-        #    clr+=1
-        #    continue
-        #print(time[:,i]/time_unit)
-        #ax.plot(time[:,0],np.log10(time[:,-1]/time[:,i]),label=good_labels[i-1],linewidth=3,markersize=5,\
-        #    marker='o',color=color_list[clr])
-        ax.plot(time[:,0],time[:,-1]/time[:,i],label=good_labels[i-1],linewidth=3,markersize=5,\
-            marker='o',color=color_list[clr])
-        clr+=1
+#     for i in range(1,time.shape[1]-2):#):
+#         #if i == 4:
+#         #    clr+=1
+#         #    continue
+#         #print(time[:,i]/time_unit)
+#         #ax.plot(time[:,0],np.log10(time[:,-1]/time[:,i]),label=good_labels[i-1],linewidth=3,markersize=5,\
+#         #    marker='o',color=color_list[clr])
+#         ax.plot(time[:,0],time[:,-1]/time[:,i],label=good_labels[i-1],linewidth=3,markersize=5,\
+#             marker='o',color=color_list[clr])
+#         clr+=1
 
-    #plt.ylabel(r'\textbf{Time (in '+time_unit_str+r')}$\rightarrow$', fontsize=20)
-    plt.ylabel(r'\textbf{log(Speed up)}$\rightarrow$', fontsize=20)
-    print(file)
+#     #plt.ylabel(r'\textbf{Time (in '+time_unit_str+r')}$\rightarrow$', fontsize=20)
+#     plt.ylabel(r'\textbf{log(Speed up)}$\rightarrow$', fontsize=20)
+#     print(file)
 
-    plt.xlabel(r'\textbf{$|\mathcal{S}|$ (in \%)}$\rightarrow$', fontsize=20,labelpad=15)
-    #plt.ylim(top=1,bottom=0)[1,file_no]
-    plt.xticks(acc[:,0])
-    #print(np.arange(80,97,step=4))
-    #plt.yticks(np.arange(80,97,step=4))
-    plt.yscale("log")
-    plt.rcParams["font.weight"] = "bold"
-    plt.rcParams["axes.labelweight"] = "bold"
-    #ax.legend(prop={'size': 18}, frameon=False,handlelength=0.4,loc='center left',\
-    #     bbox_to_anchor=(-0.65, 0.5))
+#     plt.xlabel(r'\textbf{$|\mathcal{S}|$ (in \%)}$\rightarrow$', fontsize=20,labelpad=15)
+#     #plt.ylim(top=1,bottom=0)[1,file_no]
+#     plt.xticks(acc[:,0])
+#     #print(np.arange(80,97,step=4))
+#     #plt.yticks(np.arange(80,97,step=4))
+#     plt.yscale("log")
+#     plt.rcParams["font.weight"] = "bold"
+#     plt.rcParams["axes.labelweight"] = "bold"
+#     #ax.legend(prop={'size': 18}, frameon=False,handlelength=0.4,loc='center left',\
+#     #     bbox_to_anchor=(-0.65, 0.5))
 
-    #ax.legend(ncol=5, mode="expand", borderaxespad=0.,prop={'size': 25,'weight':200},
-    #             frameon=False,handles=[DG,SDG,Triage_Alg,Triage_Est,FA,NA],
-    #                           handlelength=0.7,fontsize=70,handletextpad=0.3,columnspacing=3.0)
+#     #ax.legend(ncol=5, mode="expand", borderaxespad=0.,prop={'size': 25,'weight':200},
+#     #             frameon=False,handles=[DG,SDG,Triage_Alg,Triage_Est,FA,NA],
+#     #                           handlelength=0.7,fontsize=70,handletextpad=0.3,columnspacing=3.0)
 
-    plt.box(on=True)
-    plt.grid(axis='y',linestyle='-', linewidth=1)
-    plt.grid(axis='x',linestyle='-', linewidth=1)
+#     plt.box(on=True)
+#     plt.grid(axis='y',linestyle='-', linewidth=1)
+#     plt.grid(axis='x',linestyle='-', linewidth=1)
 
-    ax.spines['top'].set_visible(True)
-    ax.spines['right'].set_visible(True)
+#     ax.spines['top'].set_visible(True)
+#     ax.spines['right'].set_visible(True)
 
-    file = "results/Images/Time_vs_S/"+data_name+".pdf"#".pdf"
-    plt.savefig(file, bbox_inches='tight')
-    #file_no+=1
+#     file = "results/Images/Time_vs_S/"+data_name+".pdf"#".pdf"
+#     plt.savefig(file, bbox_inches='tight')
+#     #file_no+=1
     
-    fig, ax = plt.subplots()#(2,len(files))
-    clr =0
+#     fig, ax = plt.subplots()#(2,len(files))
+#     clr =0
 
-    for i in range(1,acc.shape[1]):
-        #print(clr)[0,file_no]
-        if i == 2:
-            clr+=1
-            continue
-        #ax.plot(acc[:,0],np.log10(acc[:,i]),label=good_labels[i-1],linewidth=3,markersize=5,\
-        #    marker='o',color=color_list[clr])
-        #if i == 4:
-        #    ax.plot(acc[1:,0],acc[1:,i],label=good_labels[i-1],linewidth=3,markersize=5,\
-        #        marker='o',color=color_list[clr])
-        #else:
-        ax.plot(acc[:,0],acc[:,i],label=good_labels[i-1],linewidth=3,markersize=5,\
-                marker='o',color=color_list[clr])
-        clr+=1
-    #ax.plot(acc[:,0],np.log10(acc[:,2]),label=good_labels[1],linewidth=3,markersize=5,\
-    #    marker='o',color=color_list[1])
-    ax.plot(acc[:,0],acc[:,2],label=good_labels[1],linewidth=3,markersize=5,\
-        marker='o',color=color_list[1])
+#     for i in range(1,acc.shape[1]):
+#         #print(clr)[0,file_no]
+#         if i == 2:
+#             clr+=1
+#             continue
+#         #ax.plot(acc[:,0],np.log10(acc[:,i]),label=good_labels[i-1],linewidth=3,markersize=5,\
+#         #    marker='o',color=color_list[clr])
+#         #if i == 4:
+#         #    ax.plot(acc[1:,0],acc[1:,i],label=good_labels[i-1],linewidth=3,markersize=5,\
+#         #        marker='o',color=color_list[clr])
+#         #else:
+#         ax.plot(acc[:,0],acc[:,i],label=good_labels[i-1],linewidth=3,markersize=5,\
+#                 marker='o',color=color_list[clr])
+#         clr+=1
+#     #ax.plot(acc[:,0],np.log10(acc[:,2]),label=good_labels[1],linewidth=3,markersize=5,\
+#     #    marker='o',color=color_list[1])
+#     ax.plot(acc[:,0],acc[:,2],label=good_labels[1],linewidth=3,markersize=5,\
+#         marker='o',color=color_list[1])
 
-    plt.ylabel(r'\textbf{$log(E[(y - \bar{y})^2]/y_{max}^2)$ }$\rightarrow$', fontsize=20)
-    print(file)
+#     plt.ylabel(r'\textbf{$log(E[(y - \bar{y})^2]/y_{max}^2)$ }$\rightarrow$', fontsize=20)
+#     print(file)
 
-    plt.xlabel(r'\textbf{$|\mathcal{S}|$ (in \%)}$\rightarrow$', fontsize=20,labelpad=15)
-    #plt.ylim(top=1,bottom=0)
-    plt.xticks(acc[:,0])
-    #print(np.arange(80,97,step=4))
-    #plt.yticks(np.arange(80,97,step=4))
-    plt.yscale("log")
-    plt.rcParams["font.weight"] = "bold"
-    plt.rcParams["axes.labelweight"] = "bold"
-    #ax.legend(prop={'size': 18}, frameon=False,handlelength=0.4,loc='center left',\
-    #     bbox_to_anchor=(-0.65, 0.5))'''
+#     plt.xlabel(r'\textbf{$|\mathcal{S}|$ (in \%)}$\rightarrow$', fontsize=20,labelpad=15)
+#     #plt.ylim(top=1,bottom=0)
+#     plt.xticks(acc[:,0])
+#     #print(np.arange(80,97,step=4))
+#     #plt.yticks(np.arange(80,97,step=4))
+#     plt.yscale("log")
+#     plt.rcParams["font.weight"] = "bold"
+#     plt.rcParams["axes.labelweight"] = "bold"
+#     #ax.legend(prop={'size': 18}, frameon=False,handlelength=0.4,loc='center left',\
+#     #     bbox_to_anchor=(-0.65, 0.5))'''
 
-    plt.box(on=True)
-    plt.grid(axis='y',linestyle='-', linewidth=1)
-    plt.grid(axis='x',linestyle='-', linewidth=1)
+#     plt.box(on=True)
+#     plt.grid(axis='y',linestyle='-', linewidth=1)
+#     plt.grid(axis='x',linestyle='-', linewidth=1)
 
-    ax.spines['top'].set_visible(True)
-    ax.spines['right'].set_visible(True)
+#     ax.spines['top'].set_visible(True)
+#     ax.spines['right'].set_visible(True)
 
-    file = "results/Images/Acc_vs_S/"+data_name+".pdf"#".pdf"
-    plt.savefig(file, bbox_inches='tight')
+#     file = "results/Images/Acc_vs_S/"+data_name+".pdf"#".pdf"
+#     plt.savefig(file, bbox_inches='tight')
 
-    #file_no+= 1
+#     #file_no+= 1
 
-    #handles, labels = ax.get_legend_handles_labels()
-    #fig.legend(handles, labels, loc='upper center')
-
-    
-    '''fig = pylab.figure()
-    figlegend = pylab.figure(figsize=(14,1))
-
-    #file_no =1
-    for file in files:
-
-        data_name = file.split('/')[-1].split('.')[0]
-        
-        acc =[]
-        wb = xlrd.open_workbook(file)
-        sheet = wb.sheet_by_index(0) 
-
-        curr_row = 0
-        while curr_row < (sheet.nrows - 1):
-            curr_row += 1
-            row = sheet.row(curr_row)
-            acc.append(row) 
-        
-        whole_sheet = [[ele.value for ele in each] for each in acc]
-        #print(acc)
-
-        time = np.array(whole_sheet[4:9],dtype=np.float32)
-        #acc = np.array(whole_sheet[-5:],dtype=np.float32)
-
-        time[:,0] = time[:,0]*100
-        #acc[:,0] = acc[:,0]*100 '''
+#     #handles, labels = ax.get_legend_handles_labels()
+#     #fig.legend(handles, labels, loc='upper center') 
 
 
-fig = pylab.figure()
+"""fig = pylab.figure()
 figlegend = pylab.figure(figsize=(20,1))
 
 #fig, ax = plt.subplots()
@@ -286,12 +258,12 @@ figlegend.legend(ncol=4, mode="expand", borderaxespad=0.,prop={'size': 25,'weigh
 
 
 file = "results/Images/Acc_vs_S/legend.png"#".pdf"
-plt.savefig(file, bbox_inches='tight')
+plt.savefig(file, bbox_inches='tight')"""
 
 #handles, labels = ax.get_legend_handles_labels()
 
 
-'''files = ['results/Faster/cadata/combined_cadata_0.3_pickle.xlsx',\
+files = ['results/Faster/cadata/combined_cadata_0.3_pickle.xlsx',\
     'results/Faster/LawSchool/combined_LawSchool_0.04_pickle.xlsx',
     'results/Faster/MSD/combined_MSD_0.7_pickle.xlsx',\
     'results/Faster/NY_Stock_exchange_close_100_full/combined_NY_Stock_exchange_close_1.0_pickel.xlsx',\
@@ -299,6 +271,10 @@ plt.savefig(file, bbox_inches='tight')
 
 pi_data_name = ['cadata','LawSchool','MSD','NY_Stock_exchange_close',\
     'NY_Stock_exchange_high']
+
+y_max = {'cadata':2.5341,'LawSchool':1.0,'MSD':1.1531,'NY_Stock_exchange_close': 1578.1300,\
+    'NY_Stock_exchange_high':1600.9301}
+
 
 main_keys =['mean_error','std_dev','time','S']
 
@@ -343,15 +319,15 @@ for file in files:
 
     for i in range(len(good_labels)):
         data_de[main_keys[2]][good_labels[i]] = time[:,i+1] 
-        data_de[main_keys[0]][good_labels[i]] = acc[:,i+1] 
-        data_de[main_keys[1]][good_labels[i]] = std[:,i+1] 
+        data_de[main_keys[0]][good_labels[i]] = acc[:,i+1]*(y_max[pi_data_name[file_no]]**2)
+        data_de[main_keys[1]][good_labels[i]] = std[:,i+1]*(y_max[pi_data_name[file_no]]**2)
 
     #pi_results[pi_data_name[file_no]] = data_de
 
     with open(result_dir+pi_data_name[file_no]+'.pkl', 'wb') as output:  
         pickle.dump(data_de, output, pickle.HIGHEST_PROTOCOL)
 
-    file_no+=1'''
+    file_no+=1
 
 ##CHECK
 
@@ -362,6 +338,31 @@ for file in files:
         except EOFError:
             break'''
 
+'''fig = pylab.figure()
+figlegend = pylab.figure(figsize=(14,1))
 
+#file_no =1
+for file in files:
+
+    data_name = file.split('/')[-1].split('.')[0]
+    
+    acc =[]
+    wb = xlrd.open_workbook(file)
+    sheet = wb.sheet_by_index(0) 
+
+    curr_row = 0
+    while curr_row < (sheet.nrows - 1):
+        curr_row += 1
+        row = sheet.row(curr_row)
+        acc.append(row) 
+    
+    whole_sheet = [[ele.value for ele in each] for each in acc]
+    #print(acc)
+
+    time = np.array(whole_sheet[4:9],dtype=np.float32)
+    #acc = np.array(whole_sheet[-5:],dtype=np.float32)
+
+    time[:,0] = time[:,0]*100
+    #acc[:,0] = acc[:,0]*100 '''
 
     

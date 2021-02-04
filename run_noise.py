@@ -1,16 +1,26 @@
 import subprocess
 import sys
 
-datadir = '../Datasets/data/NY_Stock_exchange'
+if_time = bool(sys.argv[1])
 
-datasets = ["NY_Stock_exchange_close"]
+#datadir = '../Datasets/data/NY_Stock_exchange'
+datadir = '../Datasets/data/'
+
+#datasets = ["NY_Stock_exchange_close"]
 #datasets = ["NY_Stock_exchange_high"]
 
-fracs =[0.001,0.003,0.005,0.007,0.01]
-num_epochs = 5000#2500#1000
+datasets = ['LawSchool']
+#datasets = ['cadata']
+#datasets = ["MSD"]
+
+
+#fracs =[0.001,0.003,0.005,0.007,0.01]
+fracs =[0.01,0.03,0.05,0.07,0.1]
+num_epochs = 2500 #5000#1000
 select_every = [35]#,35,50]
 reg_lambda = [1e-5]
-deltas = [1.0]#[i/10 for i in range(10,0,-1)] #10
+#deltas = [1.0]
+deltas = [0.04] #[i/100 for i in range(10,0,-1)] #10
 past_length = 100
 
 psuedo_length = 1.0
@@ -29,8 +39,12 @@ for dset in datasets:
                     args.append(str(sel))
                     args.append(str(r))
                     args.append(str(delt))
-                    args.append('1')
+                    if if_time:
+                        args.append('1')
+                    else:
+                        args.append('0')
                     args.append(str(psuedo_length))
-                    args.append(str(past_length))
+                    if if_time:
+                        args.append(str(past_length))
                     print(args)
                     subprocess.run(args)
