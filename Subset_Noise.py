@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from sklearn.model_selection import train_test_split
-from utils.custom_dataset import CustomDataset#load_std_regress_data,CustomDataset,load_dataset_custom
+from utils.custom_dataset import CustomDataset,load_dataset_custom #load_std_regress_data,CustomDataset,load_dataset_custom
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
 #from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
@@ -62,20 +62,20 @@ if is_time:
     x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
     x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
 
-'''elif data_name in ['Community_Crime','census','LawSchool']:
+elif data_name in ['Community_Crime','census','LawSchool']:
 
 
     fullset, data_dims = load_dataset_custom(datadir, data_name, True)
 
     if data_name == 'Community_Crime':
         x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-            = get_slices(data_name,fullset[0], fullset[1],device,3)
+            = get_slices(data_name,fullset[0], fullset[1],device,3,clean=False)
 
         change = [20,40,80,160]
 
     elif data_name == 'census':
         x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-            = get_slices(data_name,fullset[0], fullset[1],device)
+            = get_slices(data_name,fullset[0], fullset[1],device,clean=False)
         
         rescale = np.linalg.norm(x_trn)
         x_trn = x_trn/rescale
@@ -88,14 +88,14 @@ if is_time:
 
     elif data_name == 'LawSchool':
         x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-            = get_slices(data_name,fullset[0], fullset[1],device)
+            = get_slices(data_name,fullset[0], fullset[1],device,clean=False)
 
     x_trn, y_trn = torch.from_numpy(x_trn).float().to(device),torch.from_numpy(y_trn).float().to(device) 
 
     x_val,y_val = torch.cat(x_val_list,dim=0), torch.cat(y_val_list,dim=0)
     x_tst,y_tst = torch.cat(x_tst_list,dim=0), torch.cat(y_tst_list,dim=0)
 
-else:
+'''else:
     fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
 
     x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()

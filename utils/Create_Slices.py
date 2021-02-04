@@ -32,7 +32,7 @@ from sklearn import preprocessing
     indices.extend(list(np.random.choice(total_set, size= count, replace=False)))
     return indices'''
 
-def get_slices(data_name, data,labels,device,buckets=None):
+def get_slices(data_name, data,labels,device,buckets=None,clean=True):
 
     #data_slices = []
     #abel_slices =[]
@@ -321,6 +321,15 @@ def get_slices(data_name, data,labels,device,buckets=None):
         left = list(total_set)
         data_left = data[left] #preprocessing.normalize(data[left]) 
         label_left = labels[left]
+
+        if not clean:
+
+            noise_size = int(len(label_left) * 0.5)
+            noise_indices = np.random.choice(np.arange(len(label_left)), size=noise_size, replace=False)
+            
+            sigma = 40
+            label_left[noise_indices] = label_left[noise_indices] + np.random.normal(0, sigma, noise_size)
+    
         
     return data_left, label_left, val_data_slices, val_label_slices, final_lables, tst_data_slices,\
         tst_label_slices,final_lables
