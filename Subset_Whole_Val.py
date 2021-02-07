@@ -123,6 +123,7 @@ x_val, y_val = torch.from_numpy(valset[0]).float().to(device),\
      torch.from_numpy(valset[1]).float().to(device)'''
 
 print("Test len",len(y_tst))
+print("Test var",torch.var(y_tst,unbiased=False))
 
 if data_name == "synthetic":
     all_logs_dir = './results/Whole/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\

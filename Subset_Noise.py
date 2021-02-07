@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from sklearn.model_selection import train_test_split
-from utils.custom_dataset import CustomDataset,load_dataset_custom #load_std_regress_data,CustomDataset,load_dataset_custom
+from utils.custom_dataset import CustomDataset,load_dataset_custom,load_std_regress_data
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
 #from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
@@ -95,12 +95,12 @@ elif data_name in ['Community_Crime','census','LawSchool']:
     x_val,y_val = torch.cat(x_val_list,dim=0), torch.cat(y_val_list,dim=0)
     x_tst,y_tst = torch.cat(x_tst_list,dim=0), torch.cat(y_tst_list,dim=0)
 
-'''else:
-    fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
+else:
+    fullset, valset, testset = load_std_regress_data (datadir, data_name, True,False)
 
     x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
     x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
-    x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()'''
+    x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
 
 '''x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
      torch.from_numpy(fullset[1]).float().to(device)
@@ -676,24 +676,26 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             if func_name == 'Fair_subset':
 
-                fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul#,1e-4)
+                '''fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul
 
                 state_values = list(main_optimizer.state.values())
-                step = 0#state_values[0]['step']
+                step = state_values[0]['step'] #0
 
-                w_exp_avg = torch.zeros(x_trn.shape[1]+1,device=device)
-                #torch.cat((state_values[0]['exp_avg'].view(-1),state_values[1]['exp_avg']))
-                w_exp_avg_sq = torch.zeros(x_trn.shape[1]+1,device=device)
-                #torch.cat((state_values[0]['exp_avg_sq'].view(-1),state_values[1]['exp_avg_sq']))
-
+                w_exp_avg = torch.cat((state_values[2]['exp_avg'].view(-1),state_values[3]['exp_avg']))
+                w_exp_avg_sq = torch.cat((state_values[2]['exp_avg_sq'].view(-1),state_values[3]['exp_avg_sq']))
+                
                 state_values = list(dual_optimizer.state.values())
                 
-                a_exp_avg = torch.zeros(1,device=device)
-                #state_values[0]['exp_avg']
-                a_exp_avg_sq = torch.zeros(1,device=device)
-                #state_values[0]['exp_avg_sq']
+                a_exp_avg = state_values[0]['exp_avg'] 
+                a_exp_avg_sq = state_values[0]['exp_avg_sq']'''
+                
+                fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1)#,1e-3)
 
-                #print(exp_avg,exp_avg_sq)
+                step = 0
+                w_exp_avg = torch.zeros(x_trn.shape[1]+1,device=device)
+                w_exp_avg_sq = torch.zeros(x_trn.shape[1]+1,device=device)
+                a_exp_avg = torch.zeros(1,device=device)
+                a_exp_avg_sq = torch.zeros(1,device=device)
 
                 d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,current_idxs,alpha_orig,bud,\
                     train_batch_size,step,w_exp_avg,w_exp_avg_sq,a_exp_avg,a_exp_avg_sq)#,main_optimizer,dual_optimizer)

@@ -3,9 +3,10 @@ import sys
 
 datadir = '../Datasets/data//NY_Stock_exchange'
 
-datasets = ["NY_Stock_exchange_close"]
+#datasets = ["NY_Stock_exchange_close"]
+datasets = ["NY_Stock_exchange_high"]
 
-fracs =[0.001,0.003,0.005,0.007,0.01]
+fracs =[10]#[0.001,0.003,0.005,0.007,0.01]
 num_epochs = 5000#2500#1000
 select_every = [35]#,35,50]
 reg_lambda = [1e-5]

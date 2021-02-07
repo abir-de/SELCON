@@ -574,7 +574,7 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
             
         return fullset, data_dims
 
-def load_std_regress_data (datadir, dset_name,isnumpy=True):
+def load_std_regress_data (datadir, dset_name,isnumpy=True,clean=True):
 
     if dset_name == "cadata":
         trn_file = os.path.join(datadir, 'cadata.txt')
@@ -668,6 +668,14 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True):
         x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
 
     print(min(y_trn),max(y_trn))
+
+    if not clean:
+
+        noise_size = int(len(y_trn) * 0.5)
+        noise_indices = np.random.choice(np.arange(len(y_trn)), size=noise_size, replace=False)
+        
+        sigma = 40
+        y_trn[noise_indices] = y_trn[noise_indices] + np.random.normal(0, sigma, noise_size)
 
     sc = StandardScaler()
     x_trn = sc.fit_transform(x_trn)

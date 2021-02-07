@@ -130,12 +130,12 @@ class FindSubset_Vect_Deep_rePre(object):
             #if i>= f_pi_epoch:
             #    break
 
-            if abs(prev_loss - loss.item()) <= 1e-3 and stop_count >= 5:
+            '''if abs(prev_loss - loss.item()) <= 1e-5 and stop_count >= 5:
                 break 
-            elif abs(prev_loss - loss.item()) <= 1e-3:
+            elif abs(prev_loss - loss.item()) <= 1e-5:
                 stop_count += 1
             else:
-                stop_count = 0
+                stop_count = 0'''
 
             prev_loss = loss.item()
             i+=1

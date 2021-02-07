@@ -117,7 +117,7 @@ if data_name == "synthetic":
     all_logs_dir = './results/Deep/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 elif is_time:
-    all_logs_dir = './results/Deep/' + data_name +"_"+str(past_length)+'_CRAIG/' + str(fraction) +\
+    all_logs_dir = './results/Deep/' + data_name +"_"+str(past_length)+'/' + str(fraction) +\
         '/' +str(delt) + '/' +str(select_every)
 else:
     all_logs_dir = './results/Deep/' + data_name+'/' + str(fraction) +\
@@ -753,7 +753,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
             if func_name == 'Fair_subset':
 
-                fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul
+                '''fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul
 
                 state_values = list(main_optimizer.state.values())
                 step = state_values[0]['step'] #0
@@ -764,15 +764,15 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 state_values = list(dual_optimizer.state.values())
                 
                 a_exp_avg = state_values[0]['exp_avg'] 
-                a_exp_avg_sq = state_values[0]['exp_avg_sq']
+                a_exp_avg_sq = state_values[0]['exp_avg_sq']'''
                 
-                '''fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-3)
+                fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-4)
 
                 step = 0
                 w_exp_avg = torch.zeros(hidden_units+1,device=device)
                 w_exp_avg_sq = torch.zeros(hidden_units+1,device=device)
                 a_exp_avg = torch.zeros(1,device=device)
-                a_exp_avg_sq = torch.zeros(1,device=device)'''
+                a_exp_avg_sq = torch.zeros(1,device=device)
 
                 #print(exp_avg,exp_avg_sq)
 
@@ -933,7 +933,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 rand_fair = train_model_fair('Random',rand_idxs,bud)
 ending = time.process_time() 
 print("Random with Constraints training time ",ending-starting, file=logfile)
@@ -946,9 +946,9 @@ print("Subset of size ",fraction," with fairness training time ",ending-starting
 starting = time.process_time() 
 sub = train_model('Fair_subset', rand_idxs,bud=bud)
 ending = time.process_time() 
-print("Subset of size ",fraction,"training time ",ending-starting, file=logfile)'''
+print("Subset of size ",fraction,"training time ",ending-starting, file=logfile)
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 #full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
 #print("Full with Constraints training time ",ending-starting, file=logfile)
@@ -958,12 +958,12 @@ curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 starting = time.process_time() 
 #full = train_model('Random', [i for i in range(N)],2000)
 ending = time.process_time() 
-#print("Full training time ",ending-starting, file=logfile)
+#print("Full training time ",ending-starting, file=logfile)'''
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 rand = train_model('Random',rand_idxs,2000)
 ending = time.process_time() 
-print("Random training time ",ending-starting, file=logfile)'''
+print("Random training time ",ending-starting, file=logfile)
 
 #methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
 #methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
@@ -971,29 +971,29 @@ print("Random training time ",ending-starting, file=logfile)'''
 
 curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
-starting = time.process_time() 
+'''starting = time.process_time() 
 facloc = train_model('CRAIG', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
-print("CRAIG time ",ending-starting, file=logfile)
+print("CRAIG time ",ending-starting, file=logfile)'''
 
 '''starting = time.process_time() 
 glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
 print("Glister time ",ending-starting, file=logfile)'''
 
-'''deltas = torch.ones_like(deltas)*10
+deltas = torch.ones_like(deltas)#*10
 starting = time.process_time() 
 sub_con = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
-print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)'''
+print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
 
-#methods = [rand_fair,sub_fair,sub,rand,sub_con]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
-#methods_names= ["Random with Constraints","Subset with Constraits","Subset","Random",\
-#    "Subset without Constraits"]
+methods = [rand_fair,sub_fair,sub,rand,sub_con]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
+methods_names= ["Random with Constraints","Subset with Constraits","Subset","Random",\
+    "Subset without Constraits"]
 
-methods = [facloc]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
-methods_names= ["CRAIG"]
+#methods = [facloc]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
+#methods_names= ["CRAIG"]
 #["Random with Constraints","Subset with Constraints"]#,"Full with Constraints"]
 #,"Random","Facility","Glister"] #"Facility with Constraints"
 
