@@ -1,6 +1,6 @@
 # Fair-data-selection
 
-##Dependencies
+## Dependencies
 
 To run this code fully, you'll need PyTorch (we're using version 1.4.0) and scikit-learn. We've been running our code in Python 3.7.
 
