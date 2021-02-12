@@ -579,10 +579,6 @@ class FindSubset_Vect_Deep_rePre(object):
             abs_value = F_curr - (trn_losses + self.lam*reg*rem_len + \
                 (val_losses/len(loader_val.batch_sampler) -ele_delta)*ele_alphas) #+ 1e-4 
 
-            print(trn_losses[:10], (self.lam*reg*rem_len)[:10],\
-                 (val_losses-ele_delta)[:10],ele_alphas[:10])
-            #print(abs_value[:10]) /len(loader_val.batch_sampler
-
             val_dec = (val_mul > (val_losses/len(loader_val.batch_sampler) -ele_delta)*ele_alphas).float()
 
             val_dec_ind = val_dec.nonzero().view(-1)
