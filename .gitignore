@@ -9,8 +9,6 @@ pickle_deep.py
 plot_delta.py 
 plot_excel_clean.py 
 combine_lambda.py 
-combine_results_fair.py 
-combine_results.py 
 plot_excel_scatter.py 
 plot_excel.py
 plot_fair.py 

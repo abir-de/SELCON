@@ -53,10 +53,6 @@ batch_size = 4000#1000
 
 learning_rate = 0.01 #0.05 
 hidden_units = 5
-#change = [250,650,1250,1950,4000]#,4200]
-
-#def read_facility_location:
-#    f = open('results/FacLoc/'+data_name+"/"+data_name+".txt")
 
 if is_time:
     fullset, valset, testset = load_time_series_data (datadir, data_name, past_length) #, sc_trans
@@ -105,14 +101,6 @@ else:
     x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
     x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
 
-'''x_trn, y_trn = torch.from_numpy(fullset[0]).float().to(device),\
-     torch.from_numpy(fullset[1]).float().to(device)
-x_tst, y_tst = torch.from_numpy(testset[0]).float().to(device),\
-     torch.from_numpy(testset[1]).float().to(device) 
-x_val, y_val = torch.from_numpy(valset[0]).float().to(device),\
-     torch.from_numpy(valset[1]).float().to(device)'''
-
-print("Test len",len(y_tst))
 
 if data_name == "synthetic":
     all_logs_dir = './results/Deep/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
@@ -146,8 +134,8 @@ path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
 modelfile = open(path_logfile, 'w')
 
 
-N_val, M_val = x_val.shape
-print("Validation set Acccuracy",N_val,M_val)
+#N_val, M_val = x_val.shape
+#print("Validation set Acccuracy",N_val,M_val)
 
 N, M = x_trn.shape
 bud = int(fraction * N)

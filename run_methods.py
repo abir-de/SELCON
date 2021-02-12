@@ -5,10 +5,10 @@ typeOf = str(sys.argv[1])
 if_time = sys.argv[2].lower() == 'true'
 datadir = sys.argv[3]
 
-datasets = ["NY_Stock_exchange_close"]#'Community_Crime','LawSchool',"cadata","NY_Stock_exchange_close","NY_Stock_exchange_high"]
+datasets = ['Community_Crime','LawSchool',"cadata","NY_Stock_exchange_close","NY_Stock_exchange_high"]
 
-fracs =[10]#,0.2,0.3,0.4,0.5]
-num_epochs = 500
+fracs =[0.1,0.2,0.3,0.4,0.5]
+num_epochs = 2000
 select_every = [35]
 reg_lambda = [1e-5]
 deltas = [i/10 for i in range(10,0,-1)]

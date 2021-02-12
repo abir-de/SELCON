@@ -25,19 +25,6 @@ import random
 
 from utils.time_series import load_time_series_data
 
-def getBack(var_grad_fn):
-    print(var_grad_fn)
-    for n in var_grad_fn.next_functions:
-        if n[0]:
-            try:
-                tensor = getattr(n[0], 'variable')
-                print(n[0])
-                print('Tensor with grad found:', tensor)
-                print(' - gradient:', tensor.grad)
-                print()
-            except AttributeError as e:
-                getBack(n[0])
-
 torch.manual_seed(42)
 np.random.seed(42)
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -121,8 +108,8 @@ x_tst, y_tst = torch.from_numpy(testset[0]).float().to(device),\
 x_val, y_val = torch.from_numpy(valset[0]).float().to(device),\
      torch.from_numpy(valset[1]).float().to(device)'''
 
-print("Test len",len(y_tst))
-print("Test var",torch.var(y_tst,unbiased=False))
+#print("Test len",len(y_tst))
+#print("Test var",torch.var(y_tst,unbiased=False))
 
 if data_name == "synthetic":
     all_logs_dir = './results/Whole/' + data_name +"_"+str(x_trn.shape[0])+'/' + str(fraction) +\
@@ -154,50 +141,6 @@ print(exp_name, str(exp_start_time), file=modelfile)
 
 path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
 modelfile = open(path_logfile, 'w')
-
-#fullset, data_dims = load_dataset_custom(datadir, data_name, True) # valset, testset,
-
-'''if data_name == 'Community_Crime':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device,3)
-
-    change = [20,40,80,160]
-
-elif data_name == 'census':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device)
-    
-    #x_val_list, y_val_list = x_val_list[:-1], y_val_list[:-1]
-    #x_tst_list, y_tst_list = x_tst_list[:-1], y_tst_list[:-1]
-    #val_classes, tst_classes = val_classes[:-1], tst_classes[:-1]
-
-    rescale = np.linalg.norm(x_trn)
-    x_trn = x_trn/rescale
-
-    for j in range(len(x_val_list)):
-        x_val_list[j] = x_val_list[j]/rescale
-        x_tst_list[j] = x_tst_list[j]/rescale
-
-    num_cls = 2
-
-    change = [500]#[50,75,100,550] #[100,150,160,170,200]
-
-elif data_name == 'OnlineNewsPopularity':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device)
-
-    change = [100] #[100,150,160,170,200]
-
-elif data_name == 'LawSchool':
-    change = [100] #[100,150,160,170,200]
-
-elif data_name == 'German_credit':
-    change = [150,450,500] #[100,150,160,170,200]'''
-
-#change = [50,100,200,550]
-
-N_val, M_val = x_val.shape
-print("Validation set Acccuracy",N_val,M_val)
 
 N, M = x_trn.shape
 bud = int(fraction * N)
