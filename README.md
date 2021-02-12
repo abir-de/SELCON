@@ -1,4 +1,4 @@
-# Fair-data-selection
+# SELCON
 
 ## Dependencies
 
