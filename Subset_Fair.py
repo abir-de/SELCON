@@ -642,7 +642,7 @@ ending = time.process_time()
 print("Full with Constraints training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-rand = train_model('Random',rand_idxs,curr_epoch)
+rand = train_model('Random',rand_idxs)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 

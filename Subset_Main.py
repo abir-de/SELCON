@@ -390,7 +390,7 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
             idxs.sort()
 
-            print(idxs[:10])
+            #print(idxs[:10])
             np.random.seed(42)
             np_sub_idxs = np.array(idxs)
             np.random.shuffle(np_sub_idxs)
@@ -764,7 +764,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 d_sub_idxs = list(np.array(sub_rand_idxs)[d_sub_idxs])
 
                 new_ele = set(d_sub_idxs).difference(set(sub_idxs))
-                print(len(new_ele),0.1*bud)
+                #print(len(new_ele),0.1*bud)
 
                 if len(new_ele) > 0.1*bud:
                     main_optimizer = torch.optim.Adam([
