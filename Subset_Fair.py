@@ -13,8 +13,7 @@ from sklearn.model_selection import train_test_split
 from utils.custom_dataset import load_dataset_custom,CustomDataset
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
-from model.Find_Fair_Subset import FindSubset_Vect_Fair,FindSubset_Fair
-#from model.Fair_Subset2 import FindSubset_Vect_Fair
+from model.Fair_SELCON import FindSubset_Vect_Fair
 
 from torch.utils.data import DataLoader
 
@@ -355,18 +354,6 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
         #sub_idxs = fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig,bud)
         fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig)
 
-        '''main_model.load_state_dict(cached_state_dict)
-        alpha_orig = copy.deepcopy(alphas)
-
-        fsubset_d = FindSubset_Fair(x_trn, y_trn, x_val_list, y_val_list,main_model,criterion,\
-            device,deltas,learning_rate,reg_lambda)
-        
-        fsubset_d.F_values =  fsubset.F_values
-        
-        #fsubset_d.precompute(int(num_epochs/4),sub_epoch,alpha_orig,batch_size)
-
-        main_model.load_state_dict(cached_state_dict)'''
-        
         print("Starting Subset of size ",fraction," with fairness Run!")
 
     sub_idxs.sort()
@@ -654,13 +641,6 @@ full_fair = train_model_fair('Random', np.random.choice(N, size=N, replace=False
 ending = time.process_time() 
 print("Full with Constraints training time ",ending-starting, file=logfile)
 
-curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
-
-starting = time.process_time() 
-full = train_model('Random', np.random.choice(N, size=N, replace=False),curr_epoch)
-ending = time.process_time() 
-print("Full training time ",ending-starting, file=logfile)
-
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,curr_epoch)
 ending = time.process_time() 
@@ -672,8 +652,8 @@ sub = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
-methods = [rand_fair,sub_fair,full_fair,full,rand,sub] #
-methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Full","Random","Subset"]
+methods = [rand_fair,sub_fair,full_fair,rand,sub] #
+methods_names= ["Random with Constraints","Subset with Constraints","Full with Constraints","Random","Subset"]
 
 
 for me in range(len(methods)):

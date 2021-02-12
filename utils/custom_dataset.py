@@ -13,6 +13,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from sklearn import preprocessing
+from sklearn.preprocessing import LabelEncoder
 
 
 ## Custom PyTorch Dataset Class wrapper
@@ -58,6 +59,33 @@ class CustomDataset_WithId(Dataset):
         if self.transform is not None:
             sample_data = self.transform(sample_data)
         return sample_data, label,idx #.astype('float32')
+
+class MultiColumnLabelEncoder:
+    def __init__(self,columns = None):
+        self.columns = columns # array of column names to encode
+
+    def fit(self,X,y=None):
+        return self # not relevant here
+
+    def transform(self,X):
+        '''
+        Transforms columns of X specified in self.columns using
+        LabelEncoder(). If no columns specified, transforms all
+        columns in X.
+        '''
+        output = X.copy()
+        if self.columns is not None:
+            for col in self.columns:
+                # convert float NaN --> string NaN
+                output[col] = output[col].fillna('NaN')
+                output[col] = LabelEncoder().fit_transform(output[col])
+        else:
+            for colname,col in output.iteritems():
+                output[colname] = LabelEncoder().fit_transform(col)
+        return output
+
+    def fit_transform(self,X,y=None):
+        return self.fit(X,y).transform(X)
 
 ## Utility function to load datasets from libsvm datasets
 def csv_file_load(path,dim,skip=False,save_data=False):
@@ -177,90 +205,54 @@ def clean_communities_full(path):
 
     return df.to_numpy(), Y.to_numpy()
 
+def house_price_load(trn_path,tst_path,save_data=False):
 
+    train_csv = pd.read_csv(trn_path)
+    test_csv = pd.read_csv(tst_path)
 
-def german_load(path,dim, save_data=False):
+    drop_columns = (train_csv.isnull().sum().sort_values(ascending=False).\
+        loc[lambda x : x> .90*1460]).index.to_list()
 
-    data = []
-    target = []
+    train_clean = train_csv.drop(drop_columns, axis = 'columns', errors = 'ignore')
+    test_clean = test_csv.drop(drop_columns, axis = 'columns', errors = 'ignore')
 
-    indices = [0,2,3,5,6,8,9,11,13,14,16,18,19]
-    values = [4,4,10,5,5,5,3,4,3,3,4,2,2]
+    train_10_percent_missing_features = train_clean.isnull().sum().sort_values(ascending=False).loc[lambda x : (x<.10*1460)  & (x != 0)].index.to_list()
+    train_10_percent_missing_features_cat = train_clean[train_10_percent_missing_features].select_dtypes('object').columns.to_list()
+    train_10_percent_missing_features_num = train_clean[train_10_percent_missing_features].select_dtypes('number').columns.to_list()
 
-    list_dict = []
-    for i in range(len(indices)):
-        enum=enumerate(['A'+str(indices[i]+1)+str(j) for j in range(values[i]+1)])
-        list_dict.append( dict((j,i) for i,j in enum))
+    train_clean[train_10_percent_missing_features_cat] = train_clean[train_10_percent_missing_features_cat].fillna(train_clean[train_10_percent_missing_features_cat].mode().iloc[0])
+    train_clean[train_10_percent_missing_features_num] = train_clean[train_10_percent_missing_features_num].fillna(train_clean[train_10_percent_missing_features_num].median().iloc[0])
 
-    with open(path) as fp:
-        line = fp.readline()
-        line = fp.readline()
-        while line:
-            temp = [i.strip() for i in line.strip().split(" ")]
+    test_10_percent_missing_features = test_clean.isnull().sum().sort_values(ascending=False).loc[lambda x : (x<.10*1460)  & (x != 0)].index.to_list()
+    test_10_percent_missing_features_cat = test_clean[test_10_percent_missing_features].select_dtypes('object').columns.to_list()
+    test_10_percent_missing_features_num = test_clean[test_10_percent_missing_features].select_dtypes('number').columns.to_list()
 
-            target.append(float(temp[-1])-1)
-            
-            temp_data = [0.0]*dim
-            
-            #print(temp)
+    test_clean[test_10_percent_missing_features_cat] = test_clean[test_10_percent_missing_features_cat].fillna(test_clean[test_10_percent_missing_features_cat].mode().iloc[0])
+    test_clean[test_10_percent_missing_features_num] = test_clean[test_10_percent_missing_features_num].fillna(test_clean[test_10_percent_missing_features_num].median().iloc[0])
 
-            for i in range(len(temp[:-1])):
+    train_clean["LotFrontage"] = train_clean["LotFrontage"].fillna(train_clean["LotFrontage"].median())
+    test_clean["LotFrontage"] = test_clean["LotFrontage"].fillna(test_clean["LotFrontage"].median())
 
-                if i in indices:
-                    ind = indices.index(i)
-                    temp_data[i] =  list_dict[ind][temp[i]]
-                else:
-                    temp_data[i] = float(temp[i])
-            
-            data.append(temp_data)
-            line = fp.readline()
+    train_clean.drop('Id', axis = 1, inplace = True)
+    test_clean.drop('Id', axis = 1, inplace = True)
+
+    trn_y = train_clean['SalePrice'].to_frame()
+    #tst_y = test_clean['SalePrice'].to_frame()
+
+    train_clean.drop(['SalePrice'], axis = 1, inplace = True)
+    #test_clean.drop(['SalePrice'], axis = 1, inplace = True)
+ 
+    X_train_clean_index = train_clean.index.to_list()
+    X_total = train_clean.append(test_clean,ignore_index = True)
+    X_test_clean_index = np.setdiff1d(X_total.index.to_list() ,X_train_clean_index)
+
+    cat_features = X_total.select_dtypes(['object']).columns.to_list()
+    X_total_encoded = MultiColumnLabelEncoder(columns = cat_features).fit_transform(X_total)
     
-    X_data = np.array(data, dtype=np.float32)
-    Y_label = np.array(target)
+    X_train_clean_encoded = X_total_encoded.iloc[X_train_clean_index, :]
+    X_test_clean_encoded = X_total_encoded.iloc[X_test_clean_index, :].reset_index(drop = True) 
     
-    if save_data:
-        # Save the numpy files to the folder where they come from
-        data_np_path = path + '.data.npy'
-        target_np_path = path + '.label.npy'
-        np.save(data_np_path, X_data)
-        np.save(target_np_path, Y_label)
-    return (X_data, Y_label)
-
-def community_online_news(path,dim, save_data=False):
-
-    data = []
-    target = []
-    with open(path) as fp:
-        line = fp.readline()
-        line = fp.readline()
-        while line:
-            temp = [i.strip() for i in line.strip().split(",")][2:]
-
-            target.append(float(temp[-1]))
-            
-            temp_data = [0.0]*dim
-            
-            #print(temp)
-
-            for i in range(len(temp[:-1])):
-
-                if temp[i] != '?':
-                    temp_data[i] = float(temp[i])
-            
-            data.append(temp_data)
-            line = fp.readline()
-    
-    X_data = np.array(data, dtype=np.float32)
-    Y_label = np.array(target)
-    
-    if save_data:
-        # Save the numpy files to the folder where they come from
-        data_np_path = path + '.data.npy'
-        target_np_path = path + '.label.npy'
-        np.save(data_np_path, X_data)
-        np.save(target_np_path, Y_label)
-    return (X_data, Y_label)
-
+    return X_train_clean_encoded.to_numpy(),trn_y.to_numpy()#,X_test_clean_encoded,tst_y
 
 def community_crime_load(path,dim, save_data=False):
 
@@ -296,255 +288,20 @@ def community_crime_load(path,dim, save_data=False):
         np.save(target_np_path, Y_label)
     return (X_data, Y_label)
 
-'''def banking_load(path,dim=14, save_data=False):
-    
-    enum=enumerate(["admin.","unknown","unemployed","management","housemaid","entrepreneur","student",\
-        "blue-collar","self-employed","retired","technician","services"])
-    job = dict((j,i) for i,j in enum)
 
-    enum=enumerate(["married","divorced","single"])
-    marital_status = dict((j,i) for i,j in enum)
-
-    enum=enumerate(["unknown","secondary","primary","tertiary"])
-    education = dict((j,i) for i,j in enum)
-
-    enum=enumerate(["yes","no"])
-    yes_no = dict((j,i) for i,j in enum)
-
-    enum=enumerate(["unknown","other","failure","success"])
-    pout = dict((j,i) for i,j in enum)
-
-    data = []
-    target = []
-    with open(path) as fp:
-        line = fp.readline()
-        line = fp.readline()
-        while line:
-            temp = [i.strip() for i in line.strip().split(",")]
-
-            if '?' in temp  or len(temp) == 1:
-                line = fp.readline()
-                continue
-
-            if temp[-1].strip() == "no":
-                target.append(0) 
-            else:
-                target.append(1)
-            
-            temp_data = [0]*dim
-            count = 0
-            #print(temp)
-
-            for i in temp[:-1]:
-
-                if count == 1:
-                    temp_data[count] =  job[i.strip()]
-                elif count == 2:
-                    temp_data[count] =  marital_status[i.strip()]
-                elif count == 3:
-                    temp_data[count] =  education[i.strip()]
-                elif count in [4,6]:
-                    temp_data[count] =  yes_no[i.strip()]
-
-                elif count == 7:
-                    temp_data[count] =  relationship[i.strip()]
-                elif count == 8:
-                    temp_data[count] =  race[i.strip()]
-                elif count == 9:
-                    temp_data[count] =  sex[i.strip()]
-                elif count == 13:
-                    temp_data[count] =  native_country[i.strip()]
-                else:
-                    temp_data[count] = float(i)
-                temp_data[count] = float(temp_data[count])
-                count += 1
-            
-            data.append(temp_data)
-            line = fp.readline()
-    X_data = np.array(data, dtype=np.float32)
-    Y_label = np.array(target)
-    if save_data:
-        # Save the numpy files to the folder where they come from
-        data_np_path = path + '.data.npy'
-        target_np_path = path + '.label.npy'
-        np.save(data_np_path, X_data)
-        np.save(target_np_path, Y_label)
-    return (X_data, Y_label)'''
-
-
-def census_load(path,dim, save_data=False):
-    
-    enum=enumerate(['Private', 'Self-emp-not-inc', 'Self-emp-inc', 'Federal-gov', 'Local-gov', 'State-gov', 'Without-pay', 
-        'Never-worked'])
-    workclass = dict((j,i) for i,j in enum)
-
-    enum=enumerate(['Bachelors', 'Some-college', '11th', 'HS-grad', 'Prof-school', 'Assoc-acdm', 'Assoc-voc', '9th', '7th-8th', 
-        '12th', 'Masters', '1st-4th', '10th', 'Doctorate', '5th-6th', 'Preschool'])
-    education = dict((j,i) for i,j in enum)
-
-    enum=enumerate(['Married-civ-spouse', 'Divorced', 'Never-married', 'Separated', 'Widowed', 'Married-spouse-absent', 'Married-AF-spouse'])
-    marital_status = dict((j,i) for i,j in enum)
-
-    enum=enumerate(['Tech-support', 'Craft-repair', 'Other-service', 'Sales', 'Exec-managerial', 'Prof-specialty', 'Handlers-cleaners',
-        'Machine-op-inspct', 'Adm-clerical', 'Farming-fishing', 'Transport-moving', 'Priv-house-serv', 'Protective-serv', 'Armed-Forces'])
-    occupation = dict((j,i) for i,j in enum)
-
-    enum=enumerate(['Wife', 'Own-child', 'Husband', 'Not-in-family', 'Other-relative', 'Unmarried'])
-    relationship = dict((j,i) for i,j in enum)
-
-    enum=enumerate(['White', 'Asian-Pac-Islander', 'Amer-Indian-Eskimo', 'Other', 'Black'])
-    race = dict((j,i) for i,j in enum)
-
-    sex ={'Female':0,'Male':1}
-
-    enum=enumerate(['United-States', 'Cambodia', 'England', 'Puerto-Rico', 'Canada', 'Germany', 'Outlying-US(Guam-USVI-etc)',
-     'India', 'Japan', 'Greece', 'South', 'China', 'Cuba', 'Iran', 'Honduras', 'Philippines', 'Italy', 'Poland', 'Jamaica', 
-     'Vietnam', 'Mexico', 'Portugal', 'Ireland', 'France', 'Dominican-Republic', 'Laos', 'Ecuador', 'Taiwan', 'Haiti', 'Columbia', 
-     'Hungary', 'Guatemala', 'Nicaragua', 'Scotland', 'Thailand', 'Yugoslavia', 'El-Salvador', 'Trinadad&Tobago', 'Peru', 'Hong', 
-     'Holand-Netherlands'])
-    native_country = dict((j,i) for i,j in enum)
-
-    data = []
-    target = []
-    with open(path) as fp:
-        line = fp.readline()
-        while line:
-            temp = [i.strip() for i in line.strip().split(",")]
-
-            if '?' in temp  or len(temp) == 1:
-                line = fp.readline()
-                continue
-
-            if temp[-1].strip() == "<=50K" or temp[-1].strip() == "<=50K.":
-                target.append(0) 
-            else:
-                target.append(1)
-            
-            temp_data = [0]*dim
-            count = 0
-            #print(temp)
-
-            for i in temp[:-1]:
-
-                if count == 1:
-                    temp_data[count] =  workclass[i.strip()]
-                elif count == 3:
-                    temp_data[count] =  education[i.strip()]
-                elif count == 5:
-                    temp_data[count] =  marital_status[i.strip()]
-                elif count == 6:
-                    temp_data[count] =  occupation[i.strip()]
-                elif count == 7:
-                    temp_data[count] =  relationship[i.strip()]
-                elif count == 8:
-                    temp_data[count] =  race[i.strip()]
-                elif count == 9:
-                    temp_data[count] =  sex[i.strip()]
-                elif count == 13:
-                    temp_data[count] =  native_country[i.strip()]
-                else:
-                    temp_data[count] = float(i)
-                temp_data[count] = float(temp_data[count])
-                count += 1
-            
-            data.append(temp_data)
-            line = fp.readline()
-    X_data = np.array(data, dtype=np.float32)
-    Y_label = np.array(target)
-    if save_data:
-        # Save the numpy files to the folder where they come from
-        data_np_path = path + '.data.npy'
-        target_np_path = path + '.label.npy'
-        np.save(data_np_path, X_data)
-        np.save(target_np_path, Y_label)
-    return (X_data, Y_label)
-    
 def load_dataset_custom (datadir, dset_name,isnumpy=True):
 
-    if dset_name == "census":
-        trn_file = os.path.join(datadir, 'adult.data')
-        tst_file = os.path.join(datadir, 'adult.test')
-
-        data_dims = 14
-        num_cls = 2
-
-        x_trn, y_trn = census_load(trn_file, dim=data_dims)
-        x_tst, y_tst = census_load(tst_file, dim=data_dims)
-        
-        '''x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
-        sc = StandardScaler()
-        x_trn = sc.fit_transform(x_trn)
-        x_val = sc.transform(x_val)
-        x_tst = sc.transform(x_tst)'''
-
-        x_trn = np.concatenate((x_trn, x_tst), axis=0)
-        y_trn = np.concatenate((y_trn, y_tst), axis=0)
-
-        if isnumpy:
-            fullset = (x_trn, y_trn)
-            #valset = (x_val, y_val)
-            #testset = (x_tst, y_tst)
-
-        else:
-            fullset = CustomDataset(x_trn, y_trn)
-            #valset = CustomDataset(x_val, y_val)
-            #testset = CustomDataset(x_tst, y_tst)
-
-        return fullset, data_dims #, valset, testset, 
-
-    elif dset_name == "Community_Crime":
-        '''trn_file = os.path.join(datadir, 'communities.data')
-
-        data_dims = 122
-
-        x_trn, y_trn = community_crime_load(trn_file, dim=data_dims)'''
-
-        #x_trn = preprocessing.normalize(x_trn)
-        
-        '''x_trn, x_tst, y_trn, y_tst= train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
-        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
-        sc = StandardScaler()
-        x_trn = sc.fit_transform(x_trn)
-        x_val = sc.transform(x_val)
-        x_tst = sc.transform(x_tst)'''
+    if dset_name == "Community_Crime":
 
         x_trn, y_trn = clean_communities_full(os.path.join(datadir, 'communities.csv'))
 
-        #print(x_trn.shape[1])
-
-        if isnumpy:
-            fullset = (x_trn, y_trn)
-            #valset = (x_val, y_val)
-            #testset = (x_tst, y_tst)
-
-        else:
-            fullset = CustomDataset(x_trn, y_trn)
-            #valset = CustomDataset(x_val, y_val)
-            #testset = CustomDataset(x_tst, y_tst)
-
-        return fullset, x_trn.shape[1] # valset, testset,
-
-    elif dset_name == 'OnlineNewsPopularity':
-        trn_file = os.path.join(datadir, 'OnlineNewsPopularity.csv')
-
-        data_dims = 58
-
-        x_trn, y_trn = community_online_news(trn_file, dim=data_dims)
-        
-        '''x_trn, x_tst, y_trn, y_tst= train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
-        x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
-        sc = StandardScaler()
-        x_trn = sc.fit_transform(x_trn)
-        x_val = sc.transform(x_val)
-        x_tst = sc.transform(x_tst)'''
-
         if isnumpy:
             fullset = (x_trn, y_trn)
             
         else:
             fullset = CustomDataset(x_trn, y_trn)
 
-        return fullset, data_dims  # valset, testset,
+        return fullset, x_trn.shape[1] 
 
     elif dset_name == 'LawSchool':
 
@@ -557,22 +314,6 @@ def load_dataset_custom (datadir, dset_name,isnumpy=True):
             fullset = CustomDataset(x_trn, y_trn)
             
         return fullset, x_trn.shape[1] 
-
-    elif dset_name == 'German_credit':
-
-        trn_file = os.path.join(datadir, 'german.data')
-
-        data_dims = 20
-
-        x_trn, y_trn = german_load(trn_file, dim=data_dims)
-
-        if isnumpy:
-            fullset = (x_trn, y_trn)
-
-        else:
-            fullset = CustomDataset(x_trn, y_trn)
-            
-        return fullset, data_dims
 
 def load_std_regress_data (datadir, dset_name,isnumpy=True,clean=True):
 
@@ -600,32 +341,10 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True,clean=True):
         trn_file = os.path.join(datadir, 'YearPredictionMSD')
         x_trn, y_trn  = libsvm_file_load(trn_file,90)
 
-    elif dset_name == "census":
-        trn_file = os.path.join(datadir, 'adult.data')
-        tst_file = os.path.join(datadir, 'adult.test')
-
-        data_dims = 14
-
-        x_trn, y_trn = census_load(trn_file, dim=data_dims)
-        x_tst, y_tst = census_load(tst_file, dim=data_dims)
-
-        x_trn = np.concatenate((x_trn, x_tst), axis=0)
-        y_trn = np.concatenate((y_trn, y_tst), axis=0)
-
-    elif dset_name == "Community_Crime":
-
-        x_trn, y_trn = clean_communities_full(os.path.join(datadir, 'communities.csv'))
-
-    elif dset_name == 'LawSchool':
-
-        x_trn, y_trn = clean_lawschool_full(os.path.join(datadir, 'lawschool.csv'))
-
-    elif dset_name == 'OnlineNewsPopularity':
-        trn_file = os.path.join(datadir, 'OnlineNewsPopularity.csv')
-
-        data_dims = 58
-
-        x_trn, y_trn = community_online_news(trn_file, dim=data_dims)
+    elif dset_name == "house_pricing":
+        trn_file = os.path.join(datadir, 'train.csv')
+        test_file = os.path.join(datadir, 'test.csv')
+        x_trn, y_trn  = house_price_load(trn_file,test_file) #,x_tst,y_tst
 
     elif dset_name == "synthetic":
 
@@ -633,32 +352,22 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True,clean=True):
         samples = 5000#1000000
 
         np.random.seed(42)
-        
-        #avg = np.random.rand(data_dims)*5
-        #cov = np.diag(np.random.randint(50, size=data_dims))
 
         avg = np.zeros(data_dims)
         cov = np.identity(data_dims)
 
         x_trn = np.random.multivariate_normal(avg, cov, samples)#.T
-        #print(x_trn.shape)
 
-        #w = np.random.normal(np.mean(avg), np.random.randint(50, size=1)[0], data_dims)
         w = np.random.normal(0,10, data_dims) #0.25
 
-        sigma = 30#np.random.randint(50, size=1)[0]/50
-        #print(sigma)
-        #print(w)
-        
+        sigma = 30
+
         y_trn = x_trn.dot(w) + np.random.normal(0, sigma, samples)
-        #print(y_trn[:20])
-        #print(x_trn.dot(w)[:20])
-        #print((y_trn- x_trn.dot(w))[:20])
+    
+    #elif dset_name == "house_pricing":
+    #    x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
 
-    '''elif dset_name == "MSD":
-        trn_file = os.path.join(datadir, 'ablone_scle.txt')
-        x_trn, y_trn  = libsvm_file_load(trn_file,8)'''
-
+    
     if dset_name == "MSD":
         tst_file = os.path.join(datadir, 'YearPredictionMSD.t')
         x_tst, y_tst  = libsvm_file_load(tst_file,90)
@@ -666,8 +375,6 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True,clean=True):
     else:
         x_trn, x_tst, y_trn, y_tst = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
         x_trn, x_val, y_trn, y_val = train_test_split(x_trn, y_trn, test_size=0.1, random_state=42)
-
-    print(min(y_trn),max(y_trn))
 
     if not clean:
 
@@ -682,12 +389,10 @@ def load_std_regress_data (datadir, dset_name,isnumpy=True,clean=True):
     x_val = sc.transform(x_val)
     x_tst = sc.transform(x_tst)
 
-    if dset_name not in ["census"]:
-
-        sc_l = StandardScaler()
-        y_trn = np.reshape(sc_l.fit_transform(np.reshape(y_trn,(-1,1))),(-1))
-        y_val = np.reshape(sc_l.fit_transform(np.reshape(y_val,(-1,1))),(-1))
-        y_tst = np.reshape(sc_l.fit_transform(np.reshape(y_tst,(-1,1))),(-1))
+    sc_l = StandardScaler()
+    y_trn = np.reshape(sc_l.fit_transform(np.reshape(y_trn,(-1,1))),(-1))
+    y_val = np.reshape(sc_l.fit_transform(np.reshape(y_val,(-1,1))),(-1))
+    y_tst = np.reshape(sc_l.fit_transform(np.reshape(y_tst,(-1,1))),(-1))
 
     if isnumpy:
         fullset = (x_trn, y_trn)

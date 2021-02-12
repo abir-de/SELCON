@@ -1,29 +1,18 @@
 import subprocess
 import sys
 
-if_time = bool(sys.argv[1])
+typeOf = str(sys.argv[1])
+if_time = sys.argv[2].lower() == 'true'
+datadir = sys.argv[3]
 
-#datadir = '../Datasets/data/NY_Stock_exchange'
-datadir = '../Datasets/data/'
+datasets = [ 'Community_Crime','LawSchool',"cadata","NY_Stock_exchange_close","NY_Stock_exchange_high"]
 
-#datasets = ["NY_Stock_exchange_close"]
-#datasets = ["NY_Stock_exchange_high"]
-
-#datasets = ['LawSchool']
-datasets = ['cadata']
-#datasets = ["MSD"]
-
-
-#fracs =[0.001,0.003,0.005,0.007,0.01]
-#fracs =[0.01,0.03,0.05,0.07,0.1]
-fracs =[0.1]
-num_epochs = 2000 #5000#1000
-select_every = [35]#,35,50]
+fracs =[0.1,0.2,0.3,0.4,0.5]
+num_epochs = 2000
+select_every = [35]
 reg_lambda = [1e-5]
-#deltas = [1.0]
-deltas = [0.3] #[i/100 for i in range(10,0,-1)] #10
+deltas = [i/10 for i in range(10,0,-1)]
 past_length = 100
-
 psuedo_length = 1.0
 
 for dset in datasets:
@@ -32,11 +21,16 @@ for dset in datasets:
             for r in reg_lambda:
                 for delt in deltas:
                     args = ['python3']
-                    args.append('Subset_Noise.py')
+                    if typeOf == "Fair":
+                        args.append('Subset_Fair.py')
+                    elif typeOf == "Deep":
+                        args.append('Subset_Deep.py')
+                    else:
+                        args.append('Subset_Main.py')
                     if if_time:
                         args.append(datadir)
                     else:
-                        args.append(datadir+dset)
+                        args.append(datadir + dset)
                     args.append(dset)
                     args.append(str(f))
                     args.append(str(num_epochs))

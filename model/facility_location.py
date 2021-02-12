@@ -27,10 +27,6 @@ class SetFunctionFacLoc(object):
       m = y.size(0)
       d = x.size(1)
 
-      #print(x)
-      #print(x.shape)
-      #print(y.shape)
-      #print("n="+str(n)+" m="+str(m)+" d="+str(d))
       x = x.unsqueeze(1).expand(n, m, d)
       y = y.unsqueeze(0).expand(n, m, d)
 
@@ -133,11 +129,6 @@ class SetFunctionFacLoc(object):
 
 def run_stochastic_Facloc( data, targets, sub_budget, budget,logfile,device='cpu'):
     
-    #model = model.to(device)
-    '''approximate_error = 0.01
-    #per_iter_bud = 10
-    sample_size = int(len(data) / num_iterations * math.log(1 / approximate_error))'''
-    #greedy_batch_size = 1200
 
     num_iterations = int(math.ceil(len(data)/sub_budget))
     trn_indices = list(np.arange(len(data)))
@@ -170,72 +161,3 @@ def run_stochastic_Facloc( data, targets, sub_budget, budget,logfile,device='cpu
         facloc_indices.extend([sub_indices[idx] for idx in idxs])
     return facloc_indices
 
-## Convert to this argparse
-'''datadir = sys.argv[1]
-data_name = sys.argv[2]
-frac = float(sys.argv[3])
-is_time = bool(int(sys.argv[4]))
-if is_time:
-    past_length = int(sys.argv[5])
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-if is_time:
-    fullset, valset, testset = load_time_series_data (datadir, data_name, past_length) #, sc_trans
-
-    x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
-    x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
-    x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
-
-elif data_name in ['Community_Crime','census','LawSchool']:
-
-
-    fullset, data_dims = load_dataset_custom(datadir, data_name, True)
-
-    if data_name == 'Community_Crime':
-        x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-            = get_slices(data_name,fullset[0], fullset[1],device,3)
-
-        change = [20,40,80,160]
-
-    elif data_name == 'census':
-        x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-            = get_slices(data_name,fullset[0], fullset[1],device)
-        
-        rescale = np.linalg.norm(x_trn)
-        x_trn = x_trn/rescale
-
-        for j in range(len(x_val_list)):
-            x_val_list[j] = x_val_list[j]/rescale
-            x_tst_list[j] = x_tst_list[j]/rescale
-
-        num_cls = 2
-
-    elif data_name == 'LawSchool':
-        x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-            = get_slices(data_name,fullset[0], fullset[1],device)
-
-    x_trn, y_trn = torch.from_numpy(x_trn).float().to(device),torch.from_numpy(y_trn).float().to(device) 
-
-    x_val,y_val = torch.cat(x_val_list,dim=0), torch.cat(y_val_list,dim=0)
-    x_tst,y_tst = torch.cat(x_tst_list,dim=0), torch.cat(y_tst_list,dim=0)
-
-else:
-    fullset, valset, testset = load_std_regress_data (datadir, data_name, True)
-
-    x_trn,y_trn =  torch.from_numpy(fullset[0]).float(),torch.from_numpy(fullset[1]).float()
-    x_val,y_val =  torch.from_numpy(valset[0]).float(),torch.from_numpy(valset[1]).float()
-    x_tst, y_tst = torch.from_numpy(testset[0]).float(),torch.from_numpy(testset[1]).float()
-
-budget = frac*len(y_trn) #[int(float(i)*len(y_trn)) for i in frac]
-
-all_logs_dir = './results/FacLoc/' + data_name
-print(all_logs_dir)
-subprocess.run(["mkdir", "-p", all_logs_dir])
-path_logfile = os.path.join(all_logs_dir, data_name + '.txt')
-logfile = open(path_logfile, 'w')
-
-index =run_stochastic_Facloc(x_trn, y_trn, min(10000,len(y_trn)), budget,logfile,device=device)
-
-#logfile.writelines(index)
-print(index,file=logfile)'''

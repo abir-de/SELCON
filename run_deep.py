@@ -5,14 +5,16 @@ if_time = bool(sys.argv[1])
 
 #datadir = '../Datasets/data/NY_Stock_exchange'
 #datasets = ["NY_Stock_exchange_close"]
-datadir = '../Datasets/data/'
+datadir = '../../Datasets/data/'
 
 #datasets = ["MSD"]
-#datasets = ["LawSchool"]
-datasets = ["cadata"]
+datasets = ["LawSchool"]
+#datasets = ["cadata"]
+#datasets = ["house_pricing"]
 
 #fracs =[0.001,0.003,0.005,0.007,0.01]
-fracs =[0.01,0.03,0.05,0.07,0.1]
+#fracs =[0.01,0.03,0.05,0.07,0.1]
+fracs =[10]#[0.1,0.2,0.3,0.4,0.5]
 num_epochs = 2000#2500#1000
 select_every = [35]#,35,50]
 reg_lambda = [1e-5]

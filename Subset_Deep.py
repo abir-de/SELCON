@@ -12,11 +12,12 @@ import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from utils.custom_dataset import load_std_regress_data,CustomDataset,load_dataset_custom
 from utils.Create_Slices import get_slices
-#from model.LinearRegression import RegressionNet, LogisticNet
+
 from model.TwoLayer import TwoLayerNet
-#from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
-from model.Fair_Subset_Deep import FindSubset_Vect_Deep_rePre as FindSubset_Vect,FindSubset_Vect_TrnLoss_Deep
-#from facility_location import run_stochastic_Facloc
+
+from model.Deep_SELCON import FindSubset_Vect_Deep_rePre as FindSubset_Vect,\
+    FindSubset_Vect_TrnLoss_Deep
+
 from model.CRAIG import CRAIGStrategy 
 from model.glister import Glister_Linear_SetFunction_RModular_Regression as GLISTER
 
@@ -144,46 +145,6 @@ print(exp_name, str(exp_start_time), file=modelfile)
 path_logfile = os.path.join(all_logs_dir, data_name + '_model.txt')
 modelfile = open(path_logfile, 'w')
 
-#fullset, data_dims = load_dataset_custom(datadir, data_name, True) # valset, testset,
-
-'''if data_name == 'Community_Crime':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device,3)
-
-    change = [20,40,80,160]
-
-elif data_name == 'census':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device)
-    
-    #x_val_list, y_val_list = x_val_list[:-1], y_val_list[:-1]
-    #x_tst_list, y_tst_list = x_tst_list[:-1], y_tst_list[:-1]
-    #val_classes, tst_classes = val_classes[:-1], tst_classes[:-1]
-
-    rescale = np.linalg.norm(x_trn)
-    x_trn = x_trn/rescale
-
-    for j in range(len(x_val_list)):
-        x_val_list[j] = x_val_list[j]/rescale
-        x_tst_list[j] = x_tst_list[j]/rescale
-
-    num_cls = 2
-
-    change = [500]#[50,75,100,550] #[100,150,160,170,200]
-
-elif data_name == 'OnlineNewsPopularity':
-    x_trn, y_trn, x_val_list, y_val_list, val_classes,x_tst_list, y_tst_list, tst_classes\
-        = get_slices(data_name,fullset[0], fullset[1],device)
-
-    change = [100] #[100,150,160,170,200]
-
-elif data_name == 'LawSchool':
-    change = [100] #[100,150,160,170,200]
-
-elif data_name == 'German_credit':
-    change = [150,450,500] #[100,150,160,170,200]'''
-
-#change = [50,100,200,550]
 
 N_val, M_val = x_val.shape
 print("Validation set Acccuracy",N_val,M_val)
@@ -766,7 +727,7 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 a_exp_avg = state_values[0]['exp_avg'] 
                 a_exp_avg_sq = state_values[0]['exp_avg_sq']'''
                 
-                fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-4)
+                fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-6)
 
                 step = 0
                 w_exp_avg = torch.zeros(hidden_units+1,device=device)
@@ -928,9 +889,6 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
     return [val_loss,test_loss,test_loss_std,stop_epoch]#[val_accuracy, val_classes, tst_accuracy, tst_classes]
 
-
-#np.random.seed(42)
-
 rand_idxs = list(np.random.choice(N, size=bud, replace=False))
 
 starting = time.process_time() 
@@ -948,79 +906,45 @@ sub = train_model('Fair_subset', rand_idxs,bud=bud)
 ending = time.process_time() 
 print("Subset of size ",fraction,"training time ",ending-starting, file=logfile)
 
-'''starting = time.process_time() 
-#full_fair = train_model_fair('Random', [i for i in range(N)])
+starting = time.process_time() 
+full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
-#print("Full with Constraints training time ",ending-starting, file=logfile)
-
-curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
+print("Full with Constraints training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-#full = train_model('Random', [i for i in range(N)],2000)
+full = train_model('Random', [i for i in range(N)],2000)
 ending = time.process_time() 
-#print("Full training time ",ending-starting, file=logfile)'''
+print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,2000)
 ending = time.process_time() 
 print("Random training time ",ending-starting, file=logfile)
 
-#methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
-#methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
-#["Full"]#
-
-curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
-
-'''starting = time.process_time() 
+starting = time.process_time() 
 facloc = train_model('CRAIG', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
-print("CRAIG time ",ending-starting, file=logfile)'''
+print("CRAIG time ",ending-starting, file=logfile)
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
-print("Glister time ",ending-starting, file=logfile)'''
-
-deltas = torch.ones_like(deltas)#*10
-starting = time.process_time() 
-sub_con = train_model_fair('Fair_subset', rand_idxs,bud)
-ending = time.process_time() 
-print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
+print("Glister time ",ending-starting, file=logfile)
 
 
-methods = [rand_fair,sub_fair,sub,rand,sub_con]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
+methods = [rand_fair,sub_fair,sub,rand,facloc,glister,full,full_fair]
 methods_names= ["Random with Constraints","Subset with Constraits","Subset","Random",\
-    "Subset without Constraits"]
-
-#methods = [facloc]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
-#methods_names= ["CRAIG"]
-#["Random with Constraints","Subset with Constraints"]#,"Full with Constraints"]
-#,"Random","Facility","Glister"] #"Facility with Constraints"
-
+    "CRAIG","GLISTER","Full","Full with Constraints"]
 
 for me in range(len(methods)):
     
     print("\n", file=logfile)
     print(methods_names[me],file=logfile)
     print("Validation Error","|",methods[me][0].item(),"|",file=logfile)
-    #print('---------------------------------------------------------------------',file=logfile)
-
-    '''print('|Class | Error|',file=logfile)
-
-    for a in range(len(x_val_list)):
-        print("|",methods[me][1][a],"|",methods[me][0][a],"|",file=logfile)'''
-
-    #print('---------------------------------------------------------------------',file=logfile)
-
+   
     print("Test Error","|",methods[me][1].item(),"|",file=logfile)
     print("Test Error Std","|",methods[me][2].item(),"|",file=logfile)
     print('---------------------------------------------------------------------',file=logfile)
 
-    '''print('|Class | Error|',file=logfile)
-
-    for a in range(len(x_tst_list)):
-        print("|",methods[me][3][a],"|",methods[me][2][a],"|",file=logfile)'''
-
-    #print('---------------------------------------------------------------------',file=logfile)
 logfile.close()
 modelfile.close()

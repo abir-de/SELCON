@@ -13,9 +13,8 @@ from sklearn.model_selection import train_test_split
 from utils.custom_dataset import load_std_regress_data,CustomDataset,load_dataset_custom
 from utils.Create_Slices import get_slices
 from model.LinearRegression import RegressionNet, LogisticNet
-#from model.Find_Fair_Subset import FindSubset, FindSubset_Vect
-from model.Fair_Subset_no_grad import FindSubset_Vect_No_ValLoss as FindSubset_Vect,FindSubset_Vect_TrnLoss
-from facility_location import run_stochastic_Facloc
+from model.SELCON import FindSubset_Vect_No_ValLoss as FindSubset_Vect,FindSubset_Vect_TrnLoss
+from model.facility_location import run_stochastic_Facloc
 
 from model.glister import Glister_Linear_SetFunction_RModular_Regression as GLISTER
 
@@ -917,44 +916,31 @@ sub_fair = train_model_fair('Fair_subset', rand_idxs,bud)
 ending = time.process_time() 
 print("Subset of size ",fraction," with fairness training time ",ending-starting, file=logfile)
 
-'''starting = time.process_time() 
+starting = time.process_time() 
 sub = train_model('Fair_subset', rand_idxs,bud=bud)
 ending = time.process_time() 
 print("Subset of size ",fraction,"training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
-#full_fair = train_model_fair('Random', [i for i in range(N)])
+full_fair = train_model_fair('Random', [i for i in range(N)])
 ending = time.process_time() 
-#print("Full with Constraints training time ",ending-starting, file=logfile)'''
+print("Full with Constraints training time ",ending-starting, file=logfile)
 
-curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
-
-"""starting = time.process_time() 
-#full = train_model('Random', [i for i in range(N)],2000)
+starting = time.process_time() 
+full = train_model('Random', [i for i in range(N)],2000)
 ending = time.process_time() 
-#print("Full training time ",ending-starting, file=logfile)
+print("Full training time ",ending-starting, file=logfile)
 
 starting = time.process_time() 
 rand = train_model('Random',rand_idxs,2000)
 ending = time.process_time() 
-print("Random training time ",ending-starting, file=logfile)"""
+print("Random training time ",ending-starting, file=logfile)
 
-#methods =[rand_fair,sub_fair,rand] #,[full]#full_fair,full,
-#methods_names= ["Random with Constraints","Subset with Constraints","Random"] #"Full with Constraints","Full"
-#["Full"]#
-
-"""starting = time.process_time() 
+starting = time.process_time() 
 index =run_stochastic_Facloc(x_trn, y_trn, min(50000,len(y_trn)), bud,None,device=device)
 ending = time.process_time() 
 
 fac_loc_time = ending-starting
-
-'''starting = time.process_time() 
-facloc_fair = train_model_fair('Random', index)
-ending = time.process_time() 
-print("Facility location with Constraints training time ",ending-starting+fac_loc_time, file=logfile)'''
-
-curr_epoch = 1000 #max(full_fair[2],rand_fair[2],sub_fair[2])
 
 starting = time.process_time() 
 facloc = train_model('Random', index,2000)
@@ -964,11 +950,11 @@ print("Facility location time ",ending-starting+fac_loc_time, file=logfile)
 starting = time.process_time() 
 glister = train_model('Glister', rand_idxs,2000,bud=bud)
 ending = time.process_time() 
-print("Glister time ",ending-starting, file=logfile)"""
+print("Glister time ",ending-starting, file=logfile)
 
-methods = [rand_fair,sub_fair]#[rand_fair,sub_fair]#,full_fair]#,rand,facloc,glister] #,[full]#full_fair,full,facloc_fair,
-methods_names= ["Random with Constraints","Subset with Constraits"]#["Random with Constraints","Subset with Constraints"]#,"Full with Constraints"]
-#,"Random","Facility","Glister"] #"Facility with Constraints"
+methods = [rand_fair,sub_fair,sub,rand,facloc,glister,full,full_fair]
+methods_names= ["Random with Constraints","Subset with Constraits","Subset","Random",\
+    "CRAIG","GLISTER","Full","Full with Constraints"]
 
 
 for me in range(len(methods)):
