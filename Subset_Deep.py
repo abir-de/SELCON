@@ -307,7 +307,6 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
                 '''state_values = list(main_optimizer.state.values())
                 step = state_values[0]['step']
-
                 w_exp_avg = torch.cat((state_values[2]['exp_avg'].view(-1),state_values[3]['exp_avg']))
                 w_exp_avg_sq = torch.cat((state_values[2]['exp_avg_sq'].view(-1),state_values[3]['exp_avg_sq']))'''
 
@@ -323,7 +322,6 @@ def train_model(func_name,start_rand_idxs=None,curr_epoch=num_epochs, bud=None):
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
                 alpha_orig = copy.deepcopy(alphas)
-
                 sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
                     train_batch_size)
                 print(sub_idxs[:10])'''
@@ -534,10 +532,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
 
         '''main_model.load_state_dict(cached_state_dict)
         alpha_orig = copy.deepcopy(alphas)
-
         fsubset = FindSubset(x_trn, y_trn, x_val, y_val,main_model,criterion,\
             device,deltas,learning_rate,reg_lambda)
-
         fsubset.precompute(int(num_epochs/4),sub_epoch,alpha_orig,batch_size)'''
         
         main_model.load_state_dict(cached_state_dict)
@@ -703,10 +699,8 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
             if func_name == 'Fair_subset':
 
                 '''fsubset_d.lr = main_optimizer.param_groups[0]['lr']*mul
-
                 state_values = list(main_optimizer.state.values())
                 step = state_values[0]['step'] #0
-
                 w_exp_avg = torch.cat((state_values[2]['exp_avg'].view(-1),state_values[3]['exp_avg']))
                 w_exp_avg_sq = torch.cat((state_values[2]['exp_avg_sq'].view(-1),state_values[3]['exp_avg_sq']))
                 
@@ -715,7 +709,10 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 a_exp_avg = state_values[0]['exp_avg'] 
                 a_exp_avg_sq = state_values[0]['exp_avg_sq']'''
                 
-                fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-6)
+                if is_time:
+                    fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-3)
+                else:
+                    fsubset_d.lr = min(main_optimizer.param_groups[0]['lr']*mul,1e-6)
 
                 step = 0
                 w_exp_avg = torch.zeros(hidden_units+1,device=device)
@@ -723,14 +720,13 @@ def train_model_fair(func_name,start_rand_idxs=None, bud=None):
                 a_exp_avg = torch.zeros(1,device=device)
                 a_exp_avg_sq = torch.zeros(1,device=device)
 
-                #print(exp_avg,exp_avg_sq)
-
+                
+                
                 d_sub_idxs = fsubset_d.return_subset(clone_dict,sub_epoch,current_idxs,alpha_orig,bud,\
                     batch_size,step,w_exp_avg,w_exp_avg_sq,a_exp_avg,a_exp_avg_sq)#,main_optimizer,dual_optimizer)
 
                 '''clone_dict = copy.deepcopy(cached_state_dict)
                 alpha_orig = copy.deepcopy(alphas)
-
                 sub_idxs = fsubset.return_subset(clone_dict,sub_epoch,sub_idxs,alpha_orig,bud,\
                     train_batch_size)
                 print(sub_idxs[:10])'''

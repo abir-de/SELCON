@@ -21,9 +21,7 @@ for dset in datasets:
             for r in reg_lambda:
                 for delt in deltas:
                     args = ['python3']
-                    if typeOf == "Fair":
-                        args.append('Subset_Fair.py')
-                    elif typeOf == "Deep":
+                    if typeOf == "Deep":
                         args.append('Subset_Deep.py')
                     else:
                         args.append('Subset_Main.py')
