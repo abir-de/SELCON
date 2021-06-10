@@ -10,3 +10,5 @@ To run the code use `python3 run_methods.py <type> <if_time_series> <datadir>`. 
 For **if_time_series** pass *true* for NYSE datasets, otherwise *false*. Pass location of datasets for **datadir**.
 
 To generate the results use scripts in `gen_results` folder
+
+Due to limitation of size, we uploaded the data (along with the code ) in https://rebrand.ly/selcon
