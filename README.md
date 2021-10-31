@@ -1,6 +1,6 @@
 ## SELCON: Training Data Subset Selection for Regression with Controlled Generalization Error
 
-#### Authors of the paper: [Durga Sivasubramanian](https://scholar.google.com/citations?user=4JXFWTwAAAAJ&hl=en) (durgas@cse.iitb.ac.in), [Rishabh Iyer](https://sites.google.com/view/rishabhiyer/home?authuser=0/) (rishabh.iyer@utdallas.edu),  [Ganesh Ramakrishnan](https://www.cse.iitb.ac.in/~ganesh/) (ganesh@cse.iitb.ac.in), [Abir De](https://abir-de.github/io) (abir@cse,iitb.ac.in)
+#### Authors of the paper: [Durga Sivasubramanian](https://scholar.google.com/citations?user=4JXFWTwAAAAJ&hl=en) (durgas@cse.iitb.ac.in), [Rishabh Iyer](https://sites.google.com/view/rishabhiyer/home?authuser=0/) (rishabh.iyer@utdallas.edu),  [Ganesh Ramakrishnan](https://www.cse.iitb.ac.in/~ganesh/) (ganesh@cse.iitb.ac.in), [Abir De](https://abir-de.github.io) (abir@cse.iitb.ac.in)
 
 #### The code was cleaned and modularized by [Sanidhya Anand](sanidhya.anand03@gmail.com) 
 #### [Project Website](https://abir-de.github.io/projects/selcon/selcon.html#)
@@ -11,12 +11,12 @@ In a nutshell, it aims to select the training subset as well as the model parame
 
 If you use this code in your paper, please use:
 
-		@inproceedings{durga2021training,
-  				title={Training Data Subset Selection for Regression with Controlled Generalization Error},
-				author={Durga, S and Iyer, Rishabh and Ramakrishnan, Ganesh and De, Abir},
-				booktitle={International Conference on Machine Learning},
-				pages={9202--9212},
-				year={2021},
+	@inproceedings{durga2021training,
+        		title={Training Data Subset Selection for Regression with Controlled Generalization Error},
+			author={Durga, S and Iyer, Rishabh and Ramakrishnan, Ganesh and De, Abir},
+			booktitle={International Conference on Machine Learning},
+			pages={9202--9212},
+			year={2021},
 			 }
 ### Installation
 You can install the package using <br>
